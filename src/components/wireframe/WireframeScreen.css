@@ -1,69 +1,62 @@
-/* Wireframe renderer — design tokens and device chrome
+/* Wireframe renderer — Shadcn-inspired design tokens
  * Scoped to .wireframe to avoid bleeding into panel chrome.
- * Low-fidelity aesthetic: Balsamiq/Whimsical style.
- * Gray fills, 1px borders, no shadows, no polish.
+ * Higher fidelity: elements look like actual UI components, not uniform chips.
  */
 
 .wireframe {
-  /* Structural */
-  --wf-bg:            #f7f7f7;
-  --wf-section-bg:    #eeeeee;
-  --wf-chip-bg:       #d9d9d9;
-  --wf-border:        #cccccc;
-  --wf-border-strong: #aaaaaa;
-  --wf-text:          #333333;
-  --wf-text-muted:    #777777;
+  pointer-events: none; /* flat, non-interactive — visuals only */
+  user-select: none;
 
-  /* Annotation (sticky-note yellow) */
-  --wf-note-bg:       #fffbe6;
-  --wf-note-border:   #e8d84a;
-  --wf-note-text:     #5a4a00;
+  /* Shadcn zinc palette */
+  --wf-bg:           #ffffff;
+  --wf-muted:        #f4f4f5;
+  --wf-border:       #e4e4e7;
+  --wf-border-strong:#d4d4d8;
+  --wf-text:         #18181b;
+  --wf-text-muted:   #71717a;
+  --wf-text-subtle:  #a1a1aa;
+  --wf-primary:      #18181b;
+  --wf-primary-fg:   #fafafa;
+  --wf-accent:       #18181b;
+  --wf-accent-muted: #e4e4e7;
 
-  /* Spacing */
-  --wf-section-pad:   10px 12px;
-  --wf-chip-gap:      6px;
-  --wf-chip-pad:      4px 8px;
-  --wf-chip-radius:   3px;
-  --wf-font:          -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Note (sticky yellow) */
+  --wf-note-bg:      #fefce8;
+  --wf-note-border:  #fde047;
+  --wf-note-text:    #713f12;
+
+  --wf-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Override shadcn vars with real color values (Tailwind v4 uses var() directly, not hsl(var())) */
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #3f3f46;
+  --destructive-foreground: #fafafa;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #18181b;
+  --background: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
-  .wireframe {
-    --wf-bg:            #1e1e1e;
-    --wf-section-bg:    #2a2a2a;
-    --wf-chip-bg:       #3a3a3a;
-    --wf-border:        #3e3e3e;
-    --wf-border-strong: #555555;
-    --wf-text:          #cccccc;
-    --wf-text-muted:    #888888;
-    --wf-note-bg:       #2e2b1a;
-    --wf-note-border:   #7a6800;
-    --wf-note-text:     #e8c840;
-  }
-}
 
-/* ── Crossfade: skeleton → wireframe ────────────────────────────────────── */
-/* When the wireframe mounts (skeleton unmounts), fade it in smoothly.
- * This is the deliberate moment that signals a completed render. */
+/* ── Reveal animation ────────────────────────────────────────────────────── */
 
 @keyframes wf-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Wireframe wrapper ───────────────────────────────────────────────────── */
 
 .wireframe {
-  padding: 12px;
-  background: var(--bg-subtle, #f5f5f5);
-  overflow-y: auto;
-  height: 100%;
+  padding: 12px 12px 40px;
+  background: var(--wf-bg);
   animation: wf-reveal 0.25s ease-out;
 }
 
@@ -73,9 +66,11 @@
   display: flex;
   flex-direction: column;
   background: var(--wf-bg);
-  border: 1px solid var(--wf-border);
-  overflow: hidden;
+  border: 1px solid var(--wf-border-strong);
+  border-radius: 10px;
+  overflow: clip; /* clip for border-radius but don't constrain height */
   font-family: var(--wf-font);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 16px 48px rgba(0, 0, 0, 0.16);
 }
 
 .wf-device--mobile {
@@ -101,59 +96,17 @@
   position: relative;
 }
 
-/* ── Section label (type or override) ───────────────────────────────────── */
+/* ── Section label ───────────────────────────────────────────────────────── */
 
 .wf-section__label {
   font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--wf-text-muted);
-  margin-bottom: 6px;
+  color: var(--wf-text-subtle);
+  margin-bottom: 8px;
   user-select: none;
   font-family: var(--wf-font);
-}
-
-/* ── WireframeChip ───────────────────────────────────────────────────────── */
-
-.wf-chip {
-  background: var(--wf-chip-bg);
-  border: 1px solid var(--wf-border);
-  border-radius: var(--wf-chip-radius);
-  padding: var(--wf-chip-pad);
-  font-size: 10px;
-  font-family: var(--wf-font);
-  color: var(--wf-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-  user-select: none;
-  display: block;
-}
-
-/* ── ChipContainer layouts ───────────────────────────────────────────────── */
-
-.wf-chips {
-  display: flex;
-  gap: var(--wf-chip-gap);
-}
-
-.wf-chips--column {
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.wf-chips--row {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.wf-chips--grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--wf-chip-gap);
 }
 
 /* ── SectionNote ─────────────────────────────────────────────────────────── */
@@ -164,9 +117,9 @@
   gap: 6px;
   background: var(--wf-note-bg);
   border: 1px solid var(--wf-note-border);
-  border-radius: 3px;
-  padding: 4px 8px;
-  margin-top: 6px;
+  border-radius: 4px;
+  padding: 5px 8px;
+  margin-top: 8px;
   font-size: 10px;
   font-family: var(--wf-font);
   color: var(--wf-note-text);
@@ -179,4 +132,187 @@
   opacity: 0.7;
   flex-shrink: 0;
   font-size: 9px;
+}
+
+/* ── SmartItem atoms ─────────────────────────────────────────────────────── */
+
+.wf-smart-headline {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--wf-text);
+  line-height: 1.2;
+  font-family: var(--wf-font);
+  user-select: none;
+}
+
+.wf-smart-subheadline {
+  font-size: 13px;
+  color: var(--wf-text-muted);
+  line-height: 1.4;
+  font-family: var(--wf-font);
+  user-select: none;
+}
+
+.wf-smart-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.wf-text-bar {
+  height: 8px;
+  background: var(--wf-border-strong);
+  border-radius: 3px;
+}
+
+.wf-smart-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--wf-font);
+  user-select: none;
+  cursor: default;
+}
+
+.wf-smart-btn--primary {
+  background: var(--wf-primary);
+  color: var(--wf-primary-fg);
+}
+
+.wf-smart-btn--secondary {
+  background: transparent;
+  color: var(--wf-text);
+  border: 1px solid var(--wf-border-strong);
+}
+
+.wf-smart-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--wf-muted);
+  border: 1px solid var(--wf-border);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.wf-smart-image::before,
+.wf-smart-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.wf-smart-image::before {
+  background: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 0.5px),
+    var(--wf-border-strong) calc(50% - 0.5px),
+    var(--wf-border-strong) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
+
+.wf-smart-image::after {
+  background: linear-gradient(
+    to bottom left,
+    transparent calc(50% - 0.5px),
+    var(--wf-border-strong) calc(50% - 0.5px),
+    var(--wf-border-strong) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
+
+.wf-smart-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--wf-muted);
+  border: 1px solid var(--wf-border);
+  flex-shrink: 0;
+}
+
+.wf-smart-avatar--sm {
+  width: 24px;
+  height: 24px;
+}
+
+.wf-smart-icon {
+  width: 20px;
+  height: 20px;
+  background: var(--wf-muted);
+  border: 1px solid var(--wf-border);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.wf-smart-logo {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--wf-text);
+  font-family: var(--wf-font);
+  user-select: none;
+  background: var(--wf-muted);
+  border: 1px solid var(--wf-border);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.wf-smart-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.wf-smart-input-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--wf-text);
+  font-family: var(--wf-font);
+  user-select: none;
+}
+
+.wf-smart-input {
+  height: 36px;
+  border: 1px solid var(--wf-border-strong);
+  border-radius: 6px;
+  background: var(--wf-bg);
+  width: 100%;
+}
+
+.wf-smart-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--wf-font);
+  background: var(--wf-muted);
+  border: 1px solid var(--wf-border);
+  color: var(--wf-text-muted);
+  user-select: none;
+}
+
+.wf-smart-nav-item {
+  font-size: 12px;
+  color: var(--wf-text-muted);
+  font-family: var(--wf-font);
+  user-select: none;
+  padding: 2px 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wf-smart-text {
+  font-size: 12px;
+  color: var(--wf-text-muted);
+  font-family: var(--wf-font);
+  user-select: none;
 }

@@ -13,6 +13,60 @@ import { SOCKET_PATH, WEBSOCKET_PORT, type PanelMessage } from './protocol.js';
 
 const panelClients = new Set<WebSocket>();
 
+// ─── Default design tokens (shadcn/ui zinc palette) ───────────────────────────
+// Auto-injected into every schema so downstream tools have exact values.
+// Users can override per-schema by including a `tokens` block.
+
+const DEFAULT_TOKENS = {
+  colors: {
+    background:              '#ffffff',
+    foreground:              '#18181b',
+    primary:                 '#18181b',
+    'primary-foreground':    '#fafafa',
+    secondary:               '#f4f4f5',
+    'secondary-foreground':  '#18181b',
+    muted:                   '#f4f4f5',
+    'muted-foreground':      '#71717a',
+    border:                  '#e4e4e7',
+    input:                   '#e4e4e7',
+    accent:                  '#3b82f6',
+    'accent-foreground':     '#ffffff',
+    destructive:             '#ef4444',
+    card:                    '#ffffff',
+    'card-foreground':       '#18181b',
+  },
+  typography: {
+    headline:    { size: 28, weight: 700, lineHeight: 1.2, family: 'Inter, system-ui, sans-serif' },
+    subheadline: { size: 16, weight: 400, lineHeight: 1.5, family: 'Inter, system-ui, sans-serif' },
+    body:        { size: 14, weight: 400, lineHeight: 1.6, family: 'Inter, system-ui, sans-serif' },
+    button:      { size: 14, weight: 600, lineHeight: 1,   family: 'Inter, system-ui, sans-serif' },
+    label:       { size: 12, weight: 500, lineHeight: 1,   family: 'Inter, system-ui, sans-serif' },
+    caption:     { size: 11, weight: 400, lineHeight: 1.4, family: 'Inter, system-ui, sans-serif' },
+    'nav-label': { size: 10, weight: 500, lineHeight: 1,   family: 'Inter, system-ui, sans-serif' },
+  },
+  spacing: {
+    base: 16,
+    xs: 4, sm: 8, md: 16, lg: 24, xl: 40, '2xl': 64,
+  },
+  components: {
+    'button-height':    40,
+    'button-height-sm': 32,
+    'button-height-lg': 48,
+    'button-radius':    6,
+    'button-padding-x': 16,
+    'input-height':     40,
+    'input-radius':     6,
+    'input-padding-x':  12,
+    'card-radius':      8,
+    'card-shadow':      '0 1px 3px rgba(0,0,0,0.1)',
+    'avatar-size':      36,
+    'avatar-size-sm':   28,
+    'badge-height':     22,
+    'badge-radius':     4,
+    'badge-padding-x':  8,
+  },
+};
+
 export function startServer(): void {
   ensureSocketClean();
   startUnixSocketServer();
@@ -67,7 +121,13 @@ function handleHookMessage(raw: string): void {
   if (schema.schema !== 'v1') return;
   if (schema.type !== 'screen' && schema.type !== 'flow') return;
 
-  broadcast({ type: 'render', schema: msg.payload });
+  // Stamp with current time and default tokens (preserve any custom tokens Claude included)
+  const stamped = {
+    ...schema,
+    timestamp: new Date().toISOString(),
+    tokens: { ...DEFAULT_TOKENS, ...(schema.tokens as object | undefined) },
+  };
+  broadcast({ type: 'render', schema: stamped });
 }
 
 // ─── WebSocket server (sends to Tauri panel) ─────────────────────────────────

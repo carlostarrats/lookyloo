@@ -1,7 +1,6 @@
 import {
   SCHEMA_VERSION,
   PLATFORMS,
-  SECTION_TYPES,
   SPACINGS,
   NAV_POSITIONS,
   HEADER_STYLES,
@@ -60,6 +59,7 @@ function validateScreenSchema(raw: Record<string, unknown>): ValidationResult {
       label: label.value,
       timestamp: timestamp.value,
       platform: platform.value,
+      ...(isObject(raw.tokens) && { tokens: raw.tokens as unknown as import('./types').DesignTokens }),
       sections: sections.value,
     },
   };
@@ -96,6 +96,7 @@ function validateFlowSchema(raw: Record<string, unknown>): ValidationResult {
       timestamp: timestamp.value,
       platform: platform.value,
       design_language: designLanguage.value,
+      ...(isObject(raw.tokens) && { tokens: raw.tokens as unknown as import('./types').DesignTokens }),
       screens: screens.value,
     },
   };
@@ -145,11 +146,8 @@ function validateSection(raw: unknown, index: number): Field<Section> {
   const prefix = `sections[${index}]`;
   if (!isObject(raw)) return { ok: false, error: `${prefix} must be an object` };
 
-  if (!SECTION_TYPES.includes(raw.type as typeof SECTION_TYPES[number])) {
-    return {
-      ok: false,
-      error: `${prefix}.type must be one of: ${SECTION_TYPES.join(', ')}. Got: "${raw.type}"`,
-    };
+  if (typeof raw.type !== 'string' || raw.type.trim() === '') {
+    return { ok: false, error: `${prefix}.type must be a non-empty string` };
   }
 
   if (!Array.isArray(raw.contains)) {

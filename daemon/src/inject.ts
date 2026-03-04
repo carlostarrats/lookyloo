@@ -36,12 +36,26 @@ When you generate a UI layout, screen design, wireframe, or multi-screen flow, d
   "platform": "mobile" | "web" | "tablet",
   "sections": [
     {
-      "type": "header" | "hero" | "content" | "top-nav" | "bottom-nav" | "sidebar" | "form" | "list" | "grid" | "footer" | "empty-state" | "banner" | "toolbar" | "modal",
-      "contains": ["element 1", "element 2"],
+      "type": "any descriptive name — built-in: header | hero | content | top-nav | bottom-nav | sidebar | form | list | grid | footer | empty-state | banner | toolbar | modal — or anything that fits: pricing-table | testimonial-grid | stats-row | image-gallery | map | chart | carousel | onboarding-step | etc.",
+      "contains": ["actual content + element type", "e.g. 'Track Your Progress headline'", "e.g. 'Get Started button'", "e.g. 'Email address input'"],
       "label": "optional display label",
       "layout": "row" | "column" | "grid",
-      "note": "optional annotation"
+      "note": "optional annotation — use for spacing, sizing, or interaction context"
     }
+
+**Section types are open-ended.** Use whatever name best describes the section. Built-in types get dedicated high-fidelity renderers; any other name gets a clean generic layout. Do not limit yourself to the 14 built-in types.
+
+**Write real content in \`contains\`, not just type names:**
+- ✅ "Track Your Progress headline" not "headline"
+- ✅ "Get Started button" not "CTA button"
+- ✅ "Your daily fitness companion subheadline" not "subheadline"
+- ✅ "Email address input" not "input"
+- ✅ "Home", "Search", "Profile" for nav items (no type suffix needed)
+- ✅ "John Smith", "2 hours ago" for list item content
+
+The \`contains\` array drives both the wireframe render and the exported markdown spec. Descriptive content makes both useful.
+
+**Design system:** The wireframe renders in shadcn/ui zinc palette. Do not include a \`tokens\` block — the daemon auto-injects exact color, typography, spacing, and component tokens into every schema. The exported markdown includes these as tables so any downstream tool (Figma, Linear, etc.) has the exact values without guessing.
   ]
 }
 \`\`\`
@@ -110,7 +124,8 @@ export function injectSettingsHook(): void {
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
   const settings = readSettingsJson();
 
-  const existingHooks: unknown[] = (settings['PostToolUse'] as unknown[]) ?? [];
+  const hooksSection = (settings['hooks'] as Record<string, unknown>) ?? {};
+  const existingHooks: unknown[] = (hooksSection['PostToolUse'] as unknown[]) ?? [];
 
   // Check if already injected
   const alreadyPresent = existingHooks.some(
@@ -138,14 +153,15 @@ export function injectSettingsHook(): void {
     hooks: [HOOK_ENTRY],
   };
 
-  settings['PostToolUse'] = [...existingHooks, newEntry];
+  settings['hooks'] = { ...hooksSection, PostToolUse: [...existingHooks, newEntry] };
   writeSettingsJson(settings);
   console.log('[lookyloo] settings.json: hook registered');
 }
 
 export function removeSettingsHook(): void {
   const settings = readSettingsJson();
-  const existingHooks = (settings['PostToolUse'] as unknown[]) ?? [];
+  const hooksSection = (settings['hooks'] as Record<string, unknown>) ?? {};
+  const existingHooks = (hooksSection['PostToolUse'] as unknown[]) ?? [];
 
   const filtered = existingHooks.filter((h) => {
     if (typeof h !== 'object' || h === null) return true;
@@ -164,9 +180,14 @@ export function removeSettingsHook(): void {
   });
 
   if (filtered.length === 0) {
-    delete settings['PostToolUse'];
+    delete hooksSection['PostToolUse'];
   } else {
-    settings['PostToolUse'] = filtered;
+    hooksSection['PostToolUse'] = filtered;
+  }
+  if (Object.keys(hooksSection).length === 0) {
+    delete settings['hooks'];
+  } else {
+    settings['hooks'] = hooksSection;
   }
 
   writeSettingsJson(settings);

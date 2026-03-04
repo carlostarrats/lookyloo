@@ -6,6 +6,15 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "global-shortcut:default"
+    "global-shortcut:default",
+    "dialog:allow-save",
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$HOME/**" }]
+    }
   ]
 }

@@ -4,28 +4,35 @@
 
 export const SCHEMA_VERSION = 'v1' as const;
 
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+// Auto-injected by the daemon when a schema is received.
+// Exact values so any downstream tool (Figma MCP, Linear, etc.) can reconstruct
+// the design without guessing.
+
+export interface DesignTokens {
+  colors: Record<string, string>;
+  typography: Record<string, {
+    size: number;
+    weight: number;
+    lineHeight: number;
+    family: string;
+  }>;
+  spacing: Record<string, number>;
+  components: Record<string, number | string>;
+}
+
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
 export const PLATFORMS = ['mobile', 'web', 'tablet'] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
+// Built-in types get dedicated high-fidelity renderers.
+// Any other string is valid — the renderer falls back to a generic layout.
 export const SECTION_TYPES = [
-  'header',      // App/page header, logo, nav links, avatar
-  'hero',        // Headline, subheadline, primary CTA
-  'content',     // Main content area — generic
-  'top-nav',     // Tab bar or segment control at top
-  'bottom-nav',  // Mobile tab bar at bottom
-  'sidebar',     // Side panel (web layouts)
-  'form',        // Input fields, labels, submit
-  'list',        // Vertical list of items
-  'grid',        // Card grid, image grid
-  'footer',      // Page footer
-  'empty-state', // Zero state with illustration and message
-  'banner',      // Notification, alert, or announcement strip
-  'toolbar',     // Action toolbar with icon buttons
-  'modal',       // Overlay dialog (documented in schema, rendered as overlay block)
+  'header', 'hero', 'content', 'top-nav', 'bottom-nav', 'sidebar',
+  'form', 'list', 'grid', 'footer', 'empty-state', 'banner', 'toolbar', 'modal',
 ] as const;
-export type SectionType = (typeof SECTION_TYPES)[number];
+export type SectionType = string;
 
 export const SPACINGS = ['compact', 'comfortable', 'spacious'] as const;
 export type Spacing = (typeof SPACINGS)[number];
@@ -42,7 +49,7 @@ export type Layout = (typeof LAYOUTS)[number];
 // ─── Section ─────────────────────────────────────────────────────────────────
 
 export interface Section {
-  /** Semantic type of this section — used by the renderer to pick the right component */
+  /** Section type — built-in types get dedicated renderers; any other string gets a generic layout */
   type: SectionType;
   /** Optional override label for display in the wireframe (e.g. "Featured Items") */
   label?: string;
@@ -77,6 +84,8 @@ export interface ScreenSchema {
   /** ISO 8601 timestamp of when this render was generated */
   timestamp: string;
   platform: Platform;
+  /** Auto-injected by daemon — exact design tokens for downstream tools */
+  tokens?: DesignTokens;
   sections: Section[];
 }
 
@@ -99,6 +108,8 @@ export interface FlowSchema {
   platform: Platform;
   /** Shared design language — inherited by all screens */
   design_language: DesignLanguage;
+  /** Auto-injected by daemon — exact design tokens for downstream tools */
+  tokens?: DesignTokens;
   screens: FlowScreen[];
 }
 

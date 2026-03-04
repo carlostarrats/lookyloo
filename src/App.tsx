@@ -1,21 +1,40 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, Component } from 'react';
+import type { ReactNode } from 'react';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile, writeFile } from '@tauri-apps/plugin-fs';
 import { useDaemonSocket } from './hooks/useDaemonSocket';
 import { useTabs } from './hooks/useTabs';
-import { useInstalledPlugins } from './hooks/useInstalledPlugins';
-import type { KnownPlugin } from './hooks/useInstalledPlugins';
 import { validateSchema } from './schema/validate';
 import { isScreenSchema, isFlowSchema } from './schema/types';
 import type { ScreenSchema } from './schema/types';
 import { SkeletonScreen } from './components/SkeletonScreen';
 import { WireframeScreen } from './components/wireframe/WireframeScreen';
-import { exportToPng } from './exports/png';
-import { copyAsContext } from './exports/context';
-import { copyAsFigmaPrompt } from './exports/figma';
-import { copyAsGithubMarkdown } from './exports/github';
+import { capturePng, slugify } from './exports/png';
+import { copyAsGithubMarkdown, buildMarkdown } from './exports/github';
 import type { PanelMessage } from './types/messages';
 import type { Tab } from './hooks/useTabs';
 import './App.css';
+
+class WireframeErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error: error.message };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: '16px', color: '#c00', fontSize: '11px', fontFamily: 'monospace', wordBreak: 'break-all', background: '#fff0f0' }}>
+          <strong>Render error:</strong> {this.state.error}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const IDLE_PHRASES = ['Watching.', 'Ready.', 'On deck.', 'Listening.', 'Standing by.'];
 
@@ -33,7 +52,6 @@ function useIdlePhrase() {
 export default function App() {
   const idlePhrase = useIdlePhrase();
   const { tabs, activeTab, activeTabId, setActiveTabId, addTab, clearTabs } = useTabs();
-  const installedPlugins = useInstalledPlugins();
 
   const handleMessage = useCallback(
     (msg: PanelMessage) => {
@@ -49,9 +67,6 @@ export default function App() {
       }
 
       if (isFlowSchema(result.schema)) {
-        // Decompose each flow screen into its own tab, inheriting flow-level
-        // platform and timestamp. Screens appear in sequence — tab order IS
-        // the flow order.
         for (const screen of result.schema.screens) {
           const screenSchema: ScreenSchema = {
             schema: 'v1',
@@ -67,9 +82,7 @@ export default function App() {
         addTab(result.schema);
       }
 
-      getCurrentWebviewWindow()
-        .show()
-        .catch(() => {});
+      getCurrentWebviewWindow().show().catch(() => {});
     },
     [addTab, clearTabs]
   );
@@ -100,7 +113,7 @@ export default function App() {
             ))}
           </div>
           <div className="content">
-            {activeTab ? <TabContent tab={activeTab} installedPlugins={installedPlugins} /> : null}
+            {activeTab ? <TabContent tab={activeTab} /> : null}
           </div>
         </>
       ) : (
@@ -112,9 +125,11 @@ export default function App() {
   );
 }
 
-function TabContent({ tab, installedPlugins }: { tab: Tab; installedPlugins: Set<KnownPlugin> }) {
+function TabContent({ tab }: { tab: Tab }) {
   const wireframeRef = useRef<HTMLDivElement>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [confirmed, setConfirmed] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   if (tab.status === 'loading') {
     return <SkeletonScreen platform={tab.platform} />;
@@ -122,68 +137,89 @@ function TabContent({ tab, installedPlugins }: { tab: Tab; installedPlugins: Set
 
   const ts = formatTimestamp(tab.timestamp);
 
-  function markCopied(key: string) {
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
+  function flash(label: string) {
+    setConfirmed(label);
+    setTimeout(() => setConfirmed(null), 2000);
   }
 
-  async function handleExportPng() {
+  function openMenu() {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  }
+
+  function closeMenu() {
+    setMenuPos(null);
+  }
+
+  async function handleCopyMarkdown() {
+    closeMenu();
+    if (!tab.schema) return;
+    await copyAsGithubMarkdown(tab.schema);
+    flash('Copied');
+  }
+
+  async function handleSaveMd() {
+    closeMenu();
+    if (!tab.schema) return;
+    const path = await save({
+      defaultPath: `${slugify(tab.label)}.md`,
+      filters: [{ name: 'Markdown', extensions: ['md'] }],
+    });
+    if (path) await writeTextFile(path, buildMarkdown(tab.schema));
+  }
+
+  async function handleSavePng() {
+    closeMenu();
     if (!wireframeRef.current || !tab.schema) return;
     const el = wireframeRef.current.querySelector<HTMLElement>('.wireframe');
     if (!el) return;
-    await exportToPng({ label: tab.label, timestamp: tab.timestamp, element: el });
-  }
-
-  async function handleCopyContext() {
-    if (!tab.schema) return;
-    await copyAsContext(tab.schema);
-    markCopied('context');
-  }
-
-  async function handleCopyFigma() {
-    if (!tab.schema) return;
-    await copyAsFigmaPrompt(tab.schema);
-    markCopied('figma');
-  }
-
-  async function handleCopyGithub() {
-    if (!tab.schema) return;
-    await copyAsGithubMarkdown(tab.schema);
-    markCopied('github');
+    try {
+      const bytes = await capturePng({ label: tab.label, timestamp: tab.timestamp, element: el });
+      const path = await save({
+        defaultPath: `lookyloo-${slugify(tab.label)}.png`,
+        filters: [{ name: 'PNG Image', extensions: ['png'] }],
+      });
+      if (path) {
+        await writeFile(path, bytes);
+        flash('Saved PNG');
+      }
+    } catch (e) {
+      console.error('[lookyloo] PNG export error:', e);
+      flash('PNG failed');
+    }
   }
 
   return (
     <div className="tab-content">
-      <div className="tab-content__header">
-        <div className="tab-content__meta">
-          <span className="tab-content__label">{tab.label}</span>
-          <span className="tab-content__timestamp">{ts}</span>
-        </div>
-        <div className="tab-content__actions">
-          <button className="export-btn" onClick={handleCopyContext} title="Copy schema as context">
-            {copiedKey === 'context' ? 'Copied!' : 'Copy'}
-          </button>
-          {installedPlugins.has('figma') && (
-            <button className="export-btn" onClick={handleCopyFigma} title="Copy Figma MCP prompt">
-              {copiedKey === 'figma' ? 'Copied!' : 'Figma'}
-            </button>
-          )}
-          {installedPlugins.has('github') && (
-            <button className="export-btn" onClick={handleCopyGithub} title="Copy as GitHub markdown">
-              {copiedKey === 'github' ? 'Copied!' : 'GitHub'}
-            </button>
-          )}
-          <button className="export-btn" onClick={handleExportPng} title="Save as PNG">
-            PNG
-          </button>
-        </div>
+      <div className="tab-content__header" data-tauri-drag-region>
+        <span className="tab-content__timestamp">{ts}</span>
+        <button ref={buttonRef} className="actions-toggle" onClick={openMenu} title="Export options">
+          {confirmed
+            ? <span className="actions-toggle__confirmed">{confirmed}</span>
+            : <span className="actions-toggle__dots" aria-hidden><span/><span/><span/></span>
+          }
+        </button>
       </div>
       <div className="tab-content__wireframe" ref={wireframeRef}>
-        {tab.schema && isScreenSchema(tab.schema)
-          ? <WireframeScreen schema={tab.schema} />
-          : null
-        }
+        <WireframeErrorBoundary>
+          {tab.schema && isScreenSchema(tab.schema)
+            ? <WireframeScreen schema={tab.schema} />
+            : null
+          }
+        </WireframeErrorBoundary>
       </div>
+      {menuPos && (
+        <>
+          <div className="actions-menu-overlay" onClick={closeMenu} />
+          <div className="actions-menu" style={{ top: menuPos.top, right: menuPos.right }}>
+            <button className="actions-menu__item" onClick={handleCopyMarkdown}>Copy Markdown</button>
+            <button className="actions-menu__item" onClick={handleSaveMd}>Save .md</button>
+            <div className="actions-menu__separator" />
+            <button className="actions-menu__item" onClick={handleSavePng}>Save PNG</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { ScreenSchema, Platform } from '../../schema/types';
+import type { ScreenSchema, Platform, DesignTokens } from '../../schema/types';
 import { WireframeSection } from './WireframeSection';
 import './WireframeScreen.css';
 
@@ -6,12 +6,28 @@ interface Props {
   schema: ScreenSchema;
 }
 
+function tokensToCssVars(tokens: DesignTokens): React.CSSProperties {
+  const c = tokens.colors ?? {};
+  return {
+    '--wf-bg':           c['background']         ?? undefined,
+    '--wf-muted':        c['muted']               ?? c['secondary']  ?? undefined,
+    '--wf-border':       c['border']              ?? undefined,
+    '--wf-text':         c['foreground']          ?? undefined,
+    '--wf-text-muted':   c['muted-foreground']    ?? undefined,
+    '--wf-primary':      c['primary']             ?? undefined,
+    '--wf-primary-fg':   c['primary-foreground']  ?? undefined,
+    '--wf-accent':       c['accent']              ?? undefined,
+    '--wf-accent-muted': c['accent-foreground']   ?? undefined,
+  } as React.CSSProperties;
+}
+
 export function WireframeScreen({ schema }: Props) {
+  const tokenStyle = schema.tokens ? tokensToCssVars(schema.tokens) : {};
   return (
-    <div className="wireframe">
+    <div className="wireframe" style={tokenStyle}>
       <WireframeDevice platform={schema.platform}>
         {schema.sections.map((section, i) => (
-          <WireframeSection key={i} section={section} />
+          <WireframeSection key={i} section={section} screenLabel={schema.label} />
         ))}
       </WireframeDevice>
     </div>
