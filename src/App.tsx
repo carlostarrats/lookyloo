@@ -3,6 +3,7 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useDaemonSocket } from './hooks/useDaemonSocket';
 import { useTabs } from './hooks/useTabs';
 import { validateSchema } from './schema/validate';
+import { SkeletonScreen } from './components/SkeletonScreen';
 import type { PanelMessage } from './types/messages';
 import type { Tab } from './hooks/useTabs';
 import './App.css';
@@ -28,10 +29,9 @@ export default function App() {
 
       addTab(result.schema);
 
-      // Show the panel when a render arrives
       getCurrentWebviewWindow()
         .show()
-        .catch(() => {}); // Non-fatal if panel is already visible
+        .catch(() => {});
     },
     [addTab, clearTabs]
   );
@@ -46,10 +46,17 @@ export default function App() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                className={`tab ${tab.id === activeTabId ? 'tab--active' : ''}`}
+                className={[
+                  'tab',
+                  tab.id === activeTabId ? 'tab--active' : '',
+                  tab.status === 'loading' ? 'tab--loading' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 onClick={() => setActiveTabId(tab.id)}
                 title={tab.label}
               >
+                {tab.status === 'loading' && <span className="tab-spinner" aria-hidden />}
                 {tab.label}
               </button>
             ))}
@@ -68,6 +75,10 @@ export default function App() {
 }
 
 function TabContent({ tab }: { tab: Tab }) {
+  if (tab.status === 'loading') {
+    return <SkeletonScreen platform={tab.platform} />;
+  }
+
   const ts = formatTimestamp(tab.timestamp);
 
   return (
@@ -76,7 +87,7 @@ function TabContent({ tab }: { tab: Tab }) {
         <span className="tab-content__label">{tab.label}</span>
         <span className="tab-content__timestamp">{ts}</span>
       </div>
-      {/* Wireframe renderer mounts here in step 5 */}
+      {/* Wireframe renderer replaces this placeholder in step 5 */}
       <div className="tab-content__placeholder">
         <pre className="schema-debug">{JSON.stringify(tab.schema, null, 2)}</pre>
       </div>
@@ -97,7 +108,9 @@ function formatTimestamp(iso: string): string {
   if (isToday) {
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) +
+  return (
+    date.toLocaleDateString([], { month: 'short', day: 'numeric' }) +
     ', ' +
-    date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  );
 }

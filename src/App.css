@@ -114,6 +114,29 @@ html, body, #root {
   margin-bottom: -1px;
 }
 
+.tab--loading {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Spinner shown in tab label while content is loading */
+@keyframes tab-spin {
+  to { transform: rotate(360deg); }
+}
+
+.tab-spinner {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--text-muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: tab-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
 /* ── Content area ──────────────────────────────── */
 
 .content {
