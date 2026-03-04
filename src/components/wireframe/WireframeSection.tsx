@@ -63,7 +63,9 @@ function renderSection(section: Section, screenLabel?: string, platform?: string
     case 'bottom-nav':  return <BottomNavSection section={section} screenLabel={screenLabel} />;
     case 'sidebar':     return <SidebarSection section={section} screenLabel={screenLabel} />;
     case 'form':        return <FormSection section={section} />;
-    case 'list':        return <ListSection section={section} />;
+    case 'messages':
+    case 'chat':        return <ChatSection section={section} />;
+    case 'list':        return isChatList(section) ? <ChatSection section={section} /> : <ListSection section={section} />;
     case 'grid':        return <GridSection section={section} />;
     case 'footer':      return <FooterSection section={section} />;
     case 'empty-state': return <EmptyStateSection section={section} />;
@@ -486,6 +488,65 @@ function FormSection({ section }: SectionProps) {
     <div className="flex flex-col items-start gap-3">
       {section.label && <SectionLabel>{section.label}</SectionLabel>}
       {section.contains.map((item, i) => <SmartItem key={i} label={item} />)}
+    </div>
+  );
+}
+
+function isChatList(section: Section): boolean {
+  return section.contains.some(s => /\btext bubble\b|\bbubble (sent|received)\b/i.test(s))
+    || /\bmessages?\b|\bchat\b/i.test(section.label ?? '');
+}
+
+function ChatSection({ section }: SectionProps) {
+  const isSent       = (s: string) => /\bsent\b/i.test(s);
+  const isTimestamp  = (s: string) => /\btimestamp\b/i.test(s) || /^\d{1,2}:\d{2}/.test(s.trim());
+  const isTyping     = (s: string) => /\btyping\b/i.test(s);
+  const messageText  = (s: string) => s.replace(/\s*text bubble\s*(sent|received)?\s*/i, '').replace(/\s*bubble\s*(sent|received)?\s*/i, '').trim();
+
+  return (
+    <div className="flex flex-col gap-2 px-3 py-2">
+      {section.contains.map((item, i) => {
+        if (isTimestamp(item)) {
+          return (
+            <div key={i} className="flex justify-center py-1">
+              <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full select-none">
+                {messageText(item) || item}
+              </span>
+            </div>
+          );
+        }
+        if (isTyping(item)) {
+          return (
+            <div key={i} className="flex items-end gap-2">
+              <div className="w-6 h-6 rounded-full bg-muted border border-border flex-shrink-0" />
+              <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-3 py-2 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+              </div>
+            </div>
+          );
+        }
+        const sent = isSent(item);
+        const text = messageText(item);
+        if (sent) {
+          return (
+            <div key={i} className="flex justify-end">
+              <div className="bg-foreground text-background rounded-2xl rounded-br-sm px-3 py-2 max-w-[72%]">
+                <p className="text-[13px] leading-snug select-none">{text}</p>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div key={i} className="flex items-end gap-2">
+            <div className="w-6 h-6 rounded-full bg-muted border border-border flex-shrink-0" />
+            <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-3 py-2 max-w-[72%]">
+              <p className="text-[13px] leading-snug select-none">{text}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

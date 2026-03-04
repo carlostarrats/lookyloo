@@ -69,7 +69,8 @@ function launchPanel(): void {
     console.warn('[frank] panel app not found at /Applications/frank.app');
     return;
   }
-  execFile('open', [appPath], (err) => {
+  // -F forces a fresh launch even if the app is already running
+  execFile('open', ['-F', appPath], (err) => {
     if (err) console.warn('[frank] could not launch panel:', err.message);
     else console.log('[frank] panel launched');
   });
