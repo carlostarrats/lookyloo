@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useDaemonSocket } from './hooks/useDaemonSocket';
 import { useTabs } from './hooks/useTabs';
@@ -7,6 +7,8 @@ import { isScreenSchema, isFlowSchema } from './schema/types';
 import type { ScreenSchema } from './schema/types';
 import { SkeletonScreen } from './components/SkeletonScreen';
 import { WireframeScreen } from './components/wireframe/WireframeScreen';
+import { exportToPng } from './exports/png';
+import { copyAsContext } from './exports/context';
 import type { PanelMessage } from './types/messages';
 import type { Tab } from './hooks/useTabs';
 import './App.css';
@@ -95,19 +97,46 @@ export default function App() {
 }
 
 function TabContent({ tab }: { tab: Tab }) {
+  const wireframeRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+
   if (tab.status === 'loading') {
     return <SkeletonScreen platform={tab.platform} />;
   }
 
   const ts = formatTimestamp(tab.timestamp);
 
+  async function handleExportPng() {
+    if (!wireframeRef.current || !tab.schema) return;
+    const el = wireframeRef.current.querySelector<HTMLElement>('.wireframe');
+    if (!el) return;
+    await exportToPng({ label: tab.label, timestamp: tab.timestamp, element: el });
+  }
+
+  async function handleCopyContext() {
+    if (!tab.schema) return;
+    await copyAsContext(tab.schema);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <div className="tab-content">
       <div className="tab-content__header">
-        <span className="tab-content__label">{tab.label}</span>
-        <span className="tab-content__timestamp">{ts}</span>
+        <div className="tab-content__meta">
+          <span className="tab-content__label">{tab.label}</span>
+          <span className="tab-content__timestamp">{ts}</span>
+        </div>
+        <div className="tab-content__actions">
+          <button className="export-btn" onClick={handleCopyContext} title="Copy schema as context">
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <button className="export-btn" onClick={handleExportPng} title="Save as PNG">
+            PNG
+          </button>
+        </div>
       </div>
-      <div className="tab-content__wireframe">
+      <div className="tab-content__wireframe" ref={wireframeRef}>
         {tab.schema && isScreenSchema(tab.schema)
           ? <WireframeScreen schema={tab.schema} />
           : null

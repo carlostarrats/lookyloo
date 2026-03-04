@@ -156,22 +156,56 @@ html, body, #root {
 
 .tab-content__header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  gap: 8px;
+}
+
+.tab-content__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .tab-content__label {
   font-size: 12px;
   font-weight: 500;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tab-content__timestamp {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
+}
+
+.tab-content__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.export-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: var(--font);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.export-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
 }
 
 .tab-content__wireframe {
