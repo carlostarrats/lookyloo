@@ -141,6 +141,8 @@ function startWebSocketServer(): void {
   wss.on('connection', (ws) => {
     panelClients.add(ws);
     console.log(`[frank] panel connected (${panelClients.size} total)`);
+    // Replay last schema so the panel isn't blank on reconnect
+    if (lastSchema) ws.send(JSON.stringify({ type: 'render', schema: lastSchema }));
 
     ws.on('message', (data) => {
       try {
