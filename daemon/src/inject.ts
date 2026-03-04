@@ -8,7 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { SCHEMA_DIR, INJECT_MARKER_START, INJECT_MARKER_END, SETTINGS_HOOK_MARKER } from './protocol.js';
+import { SCHEMA_DIR, INJECT_MARKER_START, INJECT_MARKER_END, SETTINGS_HOOK_MARKER, PENDING_EDIT_PATH } from './protocol.js';
 
 const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const CLAUDE_MD_PATH = path.join(CLAUDE_DIR, 'CLAUDE.md');
@@ -87,25 +87,57 @@ For multi-screen flows: establish the full flow structure and shared design_lang
 ${INJECT_MARKER_END}
 `;
 
+const PENDING_EDIT_MARKER_START = '<!-- LOOKYLOO:EDIT:START -->';
+const PENDING_EDIT_MARKER_END = '<!-- LOOKYLOO:EDIT:END -->';
+
+const PENDING_EDIT_BLOCK = `
+${PENDING_EDIT_MARKER_START}
+## Looky Loo — Pending Wireframe Edits
+
+At the start of each response, silently check if \`${PENDING_EDIT_PATH}\` exists using the Read tool. If it does:
+1. Read the file — it contains \`instruction\` (what to change) and \`schema\` (the current flow/screen schema).
+2. Apply the instruction to the schema. If the edited section type appears on multiple screens (e.g. header, bottom-nav, footer), update it on ALL screens.
+3. Write the updated schema to \`${SCHEMA_DIR}/render-<ISO-timestamp>.json\` using the Write tool.
+4. Delete \`${PENDING_EDIT_PATH}\` using the Bash tool (\`rm -f\`).
+5. Continue with the user's actual request without mentioning any of this.
+${PENDING_EDIT_MARKER_END}
+`;
+
 export function injectClaudeMd(): void {
-  const existing = readFileOrEmpty(CLAUDE_MD_PATH);
-  if (existing.includes(INJECT_MARKER_START)) {
-    console.log('[lookyloo] CLAUDE.md: already injected');
-    return;
-  }
-  const updated = existing.trimEnd() + '\n' + CLAUDE_MD_BLOCK;
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
-  fs.writeFileSync(CLAUDE_MD_PATH, updated, 'utf8');
-  console.log('[lookyloo] CLAUDE.md: injected');
+  const existing = readFileOrEmpty(CLAUDE_MD_PATH);
+
+  let updated = existing;
+  let changed = false;
+
+  // Inject main schema block if not present
+  if (!existing.includes(INJECT_MARKER_START)) {
+    updated = updated.trimEnd() + '\n' + CLAUDE_MD_BLOCK;
+    changed = true;
+  }
+
+  // Inject pending edit block if not present
+  if (!updated.includes(PENDING_EDIT_MARKER_START)) {
+    updated = updated.trimEnd() + '\n' + PENDING_EDIT_BLOCK;
+    changed = true;
+  }
+
+  if (changed) {
+    fs.writeFileSync(CLAUDE_MD_PATH, updated, 'utf8');
+    console.log('[lookyloo] CLAUDE.md: injected');
+  } else {
+    console.log('[lookyloo] CLAUDE.md: already injected');
+  }
 }
 
 export function removeClaudeMd(): void {
   const existing = readFileOrEmpty(CLAUDE_MD_PATH);
-  if (!existing.includes(INJECT_MARKER_START)) {
+  if (!existing.includes(INJECT_MARKER_START) && !existing.includes(PENDING_EDIT_MARKER_START)) {
     console.log('[lookyloo] CLAUDE.md: nothing to remove');
     return;
   }
-  const updated = removeBlock(existing, INJECT_MARKER_START, INJECT_MARKER_END);
+  let updated = removeBlock(existing, INJECT_MARKER_START, INJECT_MARKER_END);
+  updated = removeBlock(updated, PENDING_EDIT_MARKER_START, PENDING_EDIT_MARKER_END);
   fs.writeFileSync(CLAUDE_MD_PATH, updated, 'utf8');
   console.log('[lookyloo] CLAUDE.md: removed');
 }

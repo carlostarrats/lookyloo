@@ -29,6 +29,16 @@ export type PanelMessage = RenderMessage | ClearMessage;
 export const SOCKET_PATH = '/tmp/lookyloo-daemon.sock';
 export const WEBSOCKET_PORT = 42069;
 export const SCHEMA_DIR = '/tmp/lookyloo';
+export const PENDING_EDIT_PATH = '/tmp/lookyloo/pending-edit.json';
+
+// Panel app locations — checked in order, first found wins
+export const PANEL_APP_CANDIDATES = [
+  '/Applications/lookyloo.app',
+  `${process.env.HOME}/Applications/lookyloo.app`,
+  // Dev build fallback
+  `${process.env.HOME}/Documents/lookyloo/src-tauri/target/release/bundle/macos/lookyloo.app`,
+];
+
 
 // Marker used in CLAUDE.md and settings.json to identify our injected blocks
 export const INJECT_MARKER_START = '<!-- LOOKYLOO:START -->';

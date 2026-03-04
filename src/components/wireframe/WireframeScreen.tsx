@@ -1,9 +1,14 @@
+import { useRef } from 'react';
+import { motion } from 'framer-motion';
 import type { ScreenSchema, Platform, DesignTokens } from '../../schema/types';
 import { WireframeSection } from './WireframeSection';
 import './WireframeScreen.css';
 
 interface Props {
   schema: ScreenSchema;
+  onNavigate?: (screenLabel: string) => void;
+  editMode?: boolean;
+  onSectionClick?: (sectionIndex: number) => void;
 }
 
 function tokensToCssVars(tokens: DesignTokens): React.CSSProperties {
@@ -21,14 +26,41 @@ function tokensToCssVars(tokens: DesignTokens): React.CSSProperties {
   } as React.CSSProperties;
 }
 
-export function WireframeScreen({ schema }: Props) {
+// Stagger cap: after 5 sections, all remaining sections share the max delay (0.15s)
+const MAX_STAGGER_SECTION = 5;
+
+export function WireframeScreen({ schema, onNavigate, editMode, onSectionClick }: Props) {
   const tokenStyle = schema.tokens ? tokensToCssVars(schema.tokens) : {};
+  // Only animate on first mount — subsequent re-renders skip the entrance
+  const hasAnimated = useRef(false);
+  const shouldAnimate = !hasAnimated.current;
+  if (shouldAnimate) hasAnimated.current = true;
+
   return (
     <div className="wireframe" style={tokenStyle}>
       <WireframeDevice platform={schema.platform}>
-        {schema.sections.map((section, i) => (
-          <WireframeSection key={i} section={section} screenLabel={schema.label} platform={schema.platform} />
-        ))}
+        {schema.sections.map((section, i) => {
+          const delay = shouldAnimate
+            ? Math.min(i, MAX_STAGGER_SECTION) * 0.03
+            : 0;
+          return (
+            <motion.div
+              key={i}
+              initial={shouldAnimate ? { opacity: 0, y: 6 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay, duration: 0.1, ease: 'easeOut' }}
+            >
+              <WireframeSection
+                section={section}
+                screenLabel={schema.label}
+                platform={schema.platform}
+                onNavigate={onNavigate}
+                editMode={editMode}
+                onSectionClick={onSectionClick ? () => onSectionClick(i) : undefined}
+              />
+            </motion.div>
+          );
+        })}
       </WireframeDevice>
     </div>
   );
@@ -41,12 +73,11 @@ function WireframeDevice({
   platform: Platform;
   children: React.ReactNode;
 }) {
-  // Normalise platform aliases to CSS class names
   const cls =
     platform === 'ios' || platform === 'android' ? 'mobile'
     : platform === 'tablet' ? 'tablet'
     : platform === 'web'    ? 'web'
-    : 'mobile'; // safe default
+    : 'mobile';
   return (
     <div className={`wf-device wf-device--${cls}`}>
       {children}

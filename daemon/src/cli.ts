@@ -7,7 +7,8 @@
 //   lookyloo hook    — hook handler (called by Claude Code, reads stdin)
 
 import fs from 'fs';
-import { SCHEMA_DIR } from './protocol.js';
+import { execFile } from 'child_process';
+import { SCHEMA_DIR, PANEL_APP_CANDIDATES } from './protocol.js';
 
 const command = process.argv[2];
 
@@ -47,6 +48,8 @@ async function runStart(): Promise<void> {
   const { startServer } = await import('./server.js');
   startServer();
 
+  launchPanel();
+
   console.log('[lookyloo] ready — open a new Claude Code session to begin');
 
   // Keep process alive
@@ -67,6 +70,18 @@ async function runStop(): Promise<void> {
   removeClaudeMd();
   removeSettingsHook();
   console.log('[lookyloo] stopped');
+}
+
+function launchPanel(): void {
+  const appPath = PANEL_APP_CANDIDATES.find(p => fs.existsSync(p));
+  if (!appPath) {
+    console.warn('[lookyloo] panel app not found — run: npm run tauri build');
+    return;
+  }
+  execFile('open', [appPath], (err) => {
+    if (err) console.warn('[lookyloo] could not launch panel:', err.message);
+    else console.log(`[lookyloo] panel launched: ${appPath}`);
+  });
 }
 
 async function runHookHandler(): Promise<void> {

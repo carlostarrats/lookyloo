@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState, Component } from 'react';
 import type { ReactNode } from 'react';
+import { Pencil } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { save } from '@tauri-apps/plugin-dialog';
-import { writeTextFile, writeFile } from '@tauri-apps/plugin-fs';
+import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { useDaemonSocket } from './hooks/useDaemonSocket';
 import { useTabs } from './hooks/useTabs';
 import { validateSchema } from './schema/validate';
 import { isScreenSchema, isFlowSchema } from './schema/types';
-import type { ScreenSchema } from './schema/types';
+import type { ScreenSchema, Section } from './schema/types';
 import { SkeletonScreen } from './components/SkeletonScreen';
 import { WireframeScreen } from './components/wireframe/WireframeScreen';
+import { EditOverlay } from './components/EditOverlay';
 import { capturePng, slugify } from './exports/png';
 import { copyAsGithubMarkdown, buildMarkdown } from './exports/github';
 import type { PanelMessage } from './types/messages';
@@ -87,7 +90,13 @@ export default function App() {
     [addTab, clearTabs]
   );
 
-  useDaemonSocket(handleMessage);
+  const sendToDaemon = useDaemonSocket(handleMessage);
+
+  // handleNavigate: switch active tab by screen label — zero render cost
+  const handleNavigate = useCallback((screenLabel: string) => {
+    const target = tabs.find(t => t.label === screenLabel);
+    if (target) setActiveTabId(target.id);
+  }, [tabs, setActiveTabId]);
 
   return (
     <div className="panel">
@@ -113,7 +122,20 @@ export default function App() {
             ))}
           </div>
           <div className="content">
-            {activeTab ? <TabContent tab={activeTab} /> : null}
+            <AnimatePresence mode="wait">
+              {activeTab ? (
+                <motion.div
+                  key={activeTabId}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.12, ease: 'easeOut' }}
+                  style={{ height: '100%' }}
+                >
+                  <TabContent tab={activeTab} onNavigate={handleNavigate} sendToDaemon={sendToDaemon} />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </div>
         </>
       ) : (
@@ -125,11 +147,27 @@ export default function App() {
   );
 }
 
-function TabContent({ tab }: { tab: Tab }) {
+interface TabContentProps {
+  tab: Tab;
+  onNavigate: (screenLabel: string) => void;
+  sendToDaemon: (msg: object) => void;
+}
+
+function TabContent({ tab, onNavigate, sendToDaemon }: TabContentProps) {
   const wireframeRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [confirmed, setConfirmed] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  // Edit mode state
+  const [editMode, setEditMode] = useState(false);
+  const [editSection, setEditSection] = useState<{ section: Section; index: number; rect: DOMRect } | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+
+  // Clear applying state when a new render arrives for this tab
+  useEffect(() => {
+    setIsApplying(false);
+  }, [tab.timestamp]);
 
   if (tab.status === 'loading') {
     return <SkeletonScreen platform={tab.platform} />;
@@ -175,7 +213,7 @@ function TabContent({ tab }: { tab: Tab }) {
     const el = wireframeRef.current.querySelector<HTMLElement>('.wireframe');
     if (!el) return;
     try {
-      const bytes = await capturePng({ label: tab.label, timestamp: tab.timestamp, element: el });
+      const bytes = await capturePng({ label: tab.label, timestamp: tab.timestamp, element: el as HTMLElement });
       const path = await save({
         defaultPath: `lookyloo-${slugify(tab.label)}.png`,
         filters: [{ name: 'PNG Image', extensions: ['png'] }],
@@ -190,25 +228,59 @@ function TabContent({ tab }: { tab: Tab }) {
     }
   }
 
+  function handleSectionClick(index: number) {
+    if (!tab.schema || !isScreenSchema(tab.schema)) return;
+    const section = tab.schema.sections[index];
+    if (!section) return;
+    // Find the section element to anchor the overlay
+    const sectionEls = wireframeRef.current?.querySelectorAll('.wf-section');
+    const el = sectionEls?.[index] as HTMLElement | undefined;
+    const rect = el?.getBoundingClientRect() ?? new DOMRect(100, 100, 200, 60);
+    setEditSection({ section, index, rect });
+  }
+
   return (
     <div className="tab-content">
-      <div className="tab-content__header" data-tauri-drag-region>
+      <div className="tab-content__header">
         <span className="tab-content__timestamp">{ts}</span>
-        <button ref={buttonRef} className="actions-toggle" onClick={openMenu} title="Export options">
-          {confirmed
-            ? <span className="actions-toggle__confirmed">{confirmed}</span>
-            : <span className="actions-toggle__dots" aria-hidden><span/><span/><span/></span>
-          }
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <button
+            className={`actions-toggle${editMode ? ' actions-toggle--active' : ''}`}
+            onClick={() => { setEditMode(m => !m); setEditSection(null); }}
+            title={editMode ? 'Exit edit mode' : 'Edit a section'}
+          >
+            <Pencil size={13} />
+          </button>
+          <button ref={buttonRef} className="actions-toggle" onClick={openMenu} title="Export options">
+            {confirmed
+              ? <span className="actions-toggle__confirmed">{confirmed}</span>
+              : <span className="actions-toggle__dots" aria-hidden><span/><span/><span/></span>
+            }
+          </button>
+        </div>
       </div>
-      <div className="tab-content__wireframe" ref={wireframeRef}>
+
+      {/* Wireframe container */}
+      <div className="tab-content__wireframe" ref={wireframeRef} style={{ position: 'relative' }}>
+        {isApplying && (
+          <div className="applying-overlay">
+            <span className="applying-spinner" />
+          </div>
+        )}
         <WireframeErrorBoundary>
           {tab.schema && isScreenSchema(tab.schema)
-            ? <WireframeScreen schema={tab.schema} />
+            ? <WireframeScreen
+                schema={tab.schema}
+                onNavigate={onNavigate}
+                editMode={editMode}
+                onSectionClick={handleSectionClick}
+              />
             : null
           }
         </WireframeErrorBoundary>
       </div>
+
+      {/* Actions dropdown */}
       {menuPos && (
         <>
           <div className="actions-menu-overlay" onClick={closeMenu} />
@@ -219,6 +291,18 @@ function TabContent({ tab }: { tab: Tab }) {
             <button className="actions-menu__item" onClick={handleSavePng}>Save PNG</button>
           </div>
         </>
+      )}
+
+      {/* Edit overlay portal */}
+      {editSection && (
+        <EditOverlay
+          section={editSection.section}
+          sectionIndex={editSection.index}
+          tabLabel={tab.label}
+          anchorRect={editSection.rect}
+          onClose={() => setEditSection(null)}
+          onSend={(prompt) => { setIsApplying(true); sendToDaemon({ type: 'inject', prompt }); }}
+        />
       )}
     </div>
   );

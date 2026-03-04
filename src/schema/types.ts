@@ -59,6 +59,8 @@ export interface Section {
   layout?: Layout;
   /** Freeform annotation — designer/Claude notes visible in the wireframe */
   note?: string;
+  /** Screen label to navigate to when the primary action in this section is clicked (prototype mode) */
+  navigatesTo?: string;
 }
 
 // ─── Design Language ─────────────────────────────────────────────────────────

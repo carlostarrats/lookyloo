@@ -4,7 +4,7 @@
  */
 
 .wireframe {
-  pointer-events: none; /* flat, non-interactive — visuals only */
+  pointer-events: none; /* flat, non-interactive — visuals only; sections with navigatesTo re-enable below */
   user-select: none;
 
   /* Shadcn zinc palette */
@@ -138,3 +138,8 @@
 }
 
 /* SmartItem atoms removed — inner elements now use Tailwind utilities directly in WireframeSection.tsx */
+
+/* Click-through: re-enable pointer events on navigable sections */
+.wireframe [style*="cursor: pointer"] {
+  pointer-events: auto;
+}

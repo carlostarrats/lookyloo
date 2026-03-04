@@ -9,49 +9,47 @@ interface ExportOptions {
   element: HTMLElement;
 }
 
-export async function capturePng({ label, timestamp, element }: ExportOptions): Promise<Uint8Array> {
-  const dataUrl = await toPng(element, {
-    pixelRatio: 2,
-    backgroundColor: '#ffffff',
-    skipFonts: true,
-  });
+const PADDING = 32; // equal whitespace on all 4 sides
 
-  // Compose: header block above the wireframe capture
+export async function capturePng({ element }: ExportOptions): Promise<Uint8Array> {
+  // Collapse height to content so empty space below sections isn't captured
+  const savedHeight = element.style.height;
+  const savedMinHeight = element.style.minHeight;
+  element.style.height = 'auto';
+  element.style.minHeight = 'unset';
+
+  // Strip box-shadow from all descendants so it doesn't bleed outside the element bounds
+  const allNodes = [element, ...Array.from(element.querySelectorAll<HTMLElement>('*'))];
+  const savedStyles = allNodes.map((n) => ({ node: n, shadow: n.style.boxShadow, filter: n.style.filter }));
+  savedStyles.forEach(({ node }) => { node.style.boxShadow = 'none'; node.style.filter = 'none'; });
+
+  let dataUrl: string;
+  try {
+    dataUrl = await toPng(element, {
+      pixelRatio: 2,
+      backgroundColor: '#ffffff',
+      skipFonts: true,
+    });
+  } finally {
+    element.style.height = savedHeight;
+    element.style.minHeight = savedMinHeight;
+    savedStyles.forEach(({ node, shadow, filter }) => { node.style.boxShadow = shadow; node.style.filter = filter; });
+  }
+
+  // Add equal padding on all sides via canvas composition
   const img = await loadImage(dataUrl);
-  const headerHeight = 52;
-  const padding = 16;
-
-  const composed = document.createElement('canvas');
-  composed.width = img.width + padding * 2;
-  composed.height = img.height + headerHeight + padding * 2;
-
-  const ctx = composed.getContext('2d');
-  if (!ctx) throw new Error('Could not get canvas context');
-
+  const canvas = document.createElement('canvas');
+  const scale = 2; // matches pixelRatio above
+  canvas.width = img.width + PADDING * scale * 2;
+  canvas.height = img.height + PADDING * scale * 2;
+  const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, composed.width, composed.height);
-
-  ctx.fillStyle = '#111111';
-  ctx.font = `600 26px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  ctx.fillText('Looky Loo  —  ' + label, padding, padding + 22);
-
-  ctx.fillStyle = '#888888';
-  ctx.font = `400 22px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  ctx.fillText(formatTimestamp(timestamp), padding, padding + 44);
-
-  ctx.strokeStyle = '#e5e5e5';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(padding, headerHeight);
-  ctx.lineTo(composed.width - padding, headerHeight);
-  ctx.stroke();
-
-  ctx.drawImage(img, padding, headerHeight + padding / 2);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, PADDING * scale, PADDING * scale);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
-    composed.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
+    canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
   });
-
   return new Uint8Array(await blob.arrayBuffer());
 }
 
@@ -64,15 +62,6 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
   });
 }
 
-function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return iso;
-  return (
-    date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) +
-    '  ' +
-    date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-  );
-}
 
 export function slugify(text: string): string {
   return text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');

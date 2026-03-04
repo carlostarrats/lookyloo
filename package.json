@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "bundle": "npm run build && npm run tauri build -- --bundles app && rm -rf /Applications/lookyloo.app && cp -r src-tauri/target/release/bundle/macos/lookyloo.app /Applications/lookyloo.app"
   },
   "dependencies": {
     "@radix-ui/react-switch": "^1.2.6",
@@ -18,6 +19,7 @@
     "@tauri-apps/plugin-opener": "^2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.35.0",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.576.0",

@@ -180,12 +180,16 @@ function validateSection(raw: unknown, index: number): Field<Section> {
       ...(raw.label !== undefined && { label: raw.label as string }),
       ...(raw.layout !== undefined && { layout: raw.layout as Section['layout'] }),
       ...(raw.note !== undefined && { note: raw.note as string }),
+      ...(raw.navigatesTo !== undefined && { navigatesTo: raw.navigatesTo as string }),
     },
   };
 }
 
 function validateDesignLanguage(obj: Record<string, unknown>): Field<DesignLanguage> {
   const raw = obj.design_language;
+  if (raw === undefined || raw === null) {
+    return { ok: true, value: {} };
+  }
   if (!isObject(raw)) {
     return { ok: false, error: '"design_language" must be an object' };
   }

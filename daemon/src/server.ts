@@ -8,10 +8,13 @@
 
 import net from 'net';
 import fs from 'fs';
+import { spawn } from 'child_process';
+import { execFileSync } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
-import { SOCKET_PATH, WEBSOCKET_PORT, type PanelMessage } from './protocol.js';
+import { SOCKET_PATH, WEBSOCKET_PORT, SCHEMA_DIR, type PanelMessage } from './protocol.js';
 
 const panelClients = new Set<WebSocket>();
+let lastSchema: unknown = null;
 
 // ─── Default design tokens (shadcn/ui zinc palette) ───────────────────────────
 // Auto-injected into every schema so downstream tools have exact values.
@@ -127,6 +130,7 @@ function handleHookMessage(raw: string): void {
     timestamp: new Date().toISOString(),
     tokens: { ...DEFAULT_TOKENS, ...(schema.tokens as object | undefined) },
   };
+  lastSchema = stamped;
   broadcast({ type: 'render', schema: stamped });
 }
 
@@ -138,6 +142,17 @@ function startWebSocketServer(): void {
   wss.on('connection', (ws) => {
     panelClients.add(ws);
     console.log(`[lookyloo] panel connected (${panelClients.size} total)`);
+
+    ws.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString()) as { type: string; prompt?: string };
+        if (msg.type === 'inject' && typeof msg.prompt === 'string') {
+          applyEdit(msg.prompt);
+        }
+      } catch (e) {
+        console.warn('[lookyloo] message error:', e);
+      }
+    });
 
     ws.on('close', () => {
       panelClients.delete(ws);
@@ -162,6 +177,60 @@ function broadcast(message: PanelMessage): void {
     }
   }
   console.log(`[lookyloo] broadcast ${message.type} to ${panelClients.size} panel(s)`);
+}
+
+
+// ─── Edit application via claude -p ──────────────────────────────────────────
+
+function findClaude(): string | null {
+  const candidates = [
+    `${process.env.HOME}/.local/bin/claude`,
+    '/usr/local/bin/claude',
+    '/opt/homebrew/bin/claude',
+  ];
+  for (const p of candidates) {
+    try { execFileSync('test', ['-f', p]); return p; } catch { /* try next */ }
+  }
+  try { return execFileSync('which', ['claude'], { encoding: 'utf8' }).trim(); } catch { return null; }
+}
+
+const CLAUDE_BIN = findClaude();
+
+function applyEdit(instruction: string): void {
+  if (!CLAUDE_BIN) {
+    console.warn('[lookyloo] claude binary not found — cannot apply edit');
+    return;
+  }
+
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const outPath = `${SCHEMA_DIR}/render-${ts}.json`;
+  const schemaBlock = lastSchema
+    ? `\nCurrent schema:\n${JSON.stringify(lastSchema, null, 2)}`
+    : '';
+
+  const prompt =
+    `You are applying a Looky Loo wireframe edit. Apply the change below to the schema ` +
+    `and write the updated schema to ${outPath} using the Write tool. ` +
+    `If the changed section type (e.g. header, bottom-nav, footer) appears on multiple screens, update it on ALL screens. ` +
+    `Do not explain anything, just write the file.\n\n` +
+    `Change: "${instruction}"` +
+    schemaBlock;
+
+  // Remove CLAUDECODE so nested-session guard doesn't block this headless invocation
+  const env = { ...process.env };
+  delete env['CLAUDECODE'];
+
+  const child = spawn(CLAUDE_BIN, [
+    '-p', prompt,
+    '--permission-mode', 'bypassPermissions',
+    '--allowedTools', 'Write',
+  ], {
+    env,
+    detached: true,
+    stdio: 'ignore',
+  });
+  child.unref();
+  console.log(`[lookyloo] applying edit via claude: "${instruction.slice(0, 80)}"`);
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────

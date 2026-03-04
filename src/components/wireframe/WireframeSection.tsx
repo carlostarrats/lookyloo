@@ -2,6 +2,7 @@
 // Uses shadcn/ui components and Tailwind utilities directly — no custom CSS for layout or typography.
 // sections.css is kept only for outer section structural chrome (borders, backgrounds, margin-top).
 
+import { motion } from 'framer-motion';
 import type { Section } from '../../schema/types';
 import {
   ChevronLeft, ChevronRight, X, Settings, Search, Menu, Plus, Share2, Pencil, Bell,
@@ -23,17 +24,36 @@ interface SectionProps {
   section: Section;
   screenLabel?: string;
   platform?: string;
+  onNavigate?: (screenLabel: string) => void;
+  editMode?: boolean;
+  onSectionClick?: () => void;
 }
 
-export function WireframeSection({ section, screenLabel, platform }: SectionProps) {
+export function WireframeSection({ section, screenLabel, platform, onNavigate, editMode, onSectionClick }: SectionProps) {
+  const hasNavigate = !!section.navigatesTo && !!onNavigate;
+  const ringClass = hasNavigate ? 'ring-1 ring-primary/40' : '';
+  const editClass = editMode ? 'cursor-pointer hover:ring-1 hover:ring-muted-foreground/30' : '';
+
+  function handleClick() {
+    if (editMode && onSectionClick) {
+      onSectionClick();
+    } else if (hasNavigate && onNavigate) {
+      onNavigate(section.navigatesTo!);
+    }
+  }
+
   return (
-    <div className={`wf-section wf-section--${section.type}`}>
-      {renderSection(section, screenLabel, platform)}
+    <div
+      className={`wf-section wf-section--${section.type} ${ringClass} ${editClass}`.trim()}
+      onClick={(editMode || hasNavigate) ? handleClick : undefined}
+      style={(editMode || hasNavigate) ? { cursor: 'pointer' } : undefined}
+    >
+      {renderSection(section, screenLabel, platform, onNavigate)}
     </div>
   );
 }
 
-function renderSection(section: Section, screenLabel?: string, platform?: string) {
+function renderSection(section: Section, screenLabel?: string, platform?: string, _onNavigate?: (label: string) => void) {
   switch (section.type) {
     case 'header':      return <HeaderSection section={section} />;
     case 'hero':        return <HeroSection section={section} platform={platform} />;
@@ -881,12 +901,20 @@ function LoaderSection({ section }: SectionProps) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-5">
         <div className="flex items-end gap-10">
-          <svg width="44" height="72" viewBox="0 0 44 90" fill="currentColor" className="text-foreground">
+          <motion.svg
+            width="44" height="72" viewBox="0 0 44 90" fill="currentColor" className="text-foreground"
+            animate={{ x: [-6, 6, -6] }}
+            transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}
+          >
             <path d="M42 6 L42 58 L30 78 L0 60 L22 53 Z" />
-          </svg>
-          <svg width="44" height="72" viewBox="0 0 44 90" fill="currentColor" className="text-foreground">
+          </motion.svg>
+          <motion.svg
+            width="44" height="72" viewBox="0 0 44 90" fill="currentColor" className="text-foreground"
+            animate={{ x: [6, -6, 6] }}
+            transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}
+          >
             <path d="M2 6 L2 58 L14 78 L44 60 L22 53 Z" />
-          </svg>
+          </motion.svg>
         </div>
         {desc && <p className="text-xs text-muted-foreground select-none text-center max-w-[180px]">{desc}</p>}
       </div>
@@ -900,8 +928,18 @@ function LoaderSection({ section }: SectionProps) {
         <div className="relative flex flex-col items-center">
           <InFlightMark size={80} />
           <svg width="140" height="36" viewBox="0 0 140 36" className="mt-1">
-            <path d="M70 0 C50 18 25 28 0 32" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 4" fill="none" className="text-border" />
-            <path d="M70 0 C90 18 115 28 140 32" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 4" fill="none" className="text-border" />
+            <motion.path
+              d="M70 0 C50 18 25 28 0 32"
+              stroke="currentColor" strokeWidth="1.5" fill="none" className="text-border"
+              animate={{ pathLength: [0, 1, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+            />
+            <motion.path
+              d="M70 0 C90 18 115 28 140 32"
+              stroke="currentColor" strokeWidth="1.5" fill="none" className="text-border"
+              animate={{ pathLength: [0, 1, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut', delay: 0.1 }}
+            />
           </svg>
         </div>
         {desc && <p className="text-xs text-muted-foreground select-none text-center max-w-[180px]">{desc}</p>}
@@ -913,7 +951,11 @@ function LoaderSection({ section }: SectionProps) {
   if (/float|gentle|bob|drift/i.test(v)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-5">
-        <div className="flex items-center gap-4">
+        <motion.div
+          className="flex items-center gap-4"
+          animate={{ y: [-4, 4, -4] }}
+          transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+        >
           <svg width="32" height="8" viewBox="0 0 32 8">
             <path d="M0 4 Q8 1 16 4 Q24 7 32 4" stroke="currentColor" strokeWidth="1" fill="none" className="text-border" strokeDasharray="3 2" />
           </svg>
@@ -921,7 +963,7 @@ function LoaderSection({ section }: SectionProps) {
           <svg width="32" height="8" viewBox="0 0 32 8">
             <path d="M0 4 Q8 7 16 4 Q24 1 32 4" stroke="currentColor" strokeWidth="1" fill="none" className="text-border" strokeDasharray="3 2" />
           </svg>
-        </div>
+        </motion.div>
         {desc && <p className="text-xs text-muted-foreground select-none text-center max-w-[180px]">{desc}</p>}
       </div>
     );
@@ -931,13 +973,17 @@ function LoaderSection({ section }: SectionProps) {
   if (/fold|origami|unfold|paper/i.test(v)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-5">
-        <div className="relative">
+        <motion.div
+          className="relative"
+          animate={{ rotateY: [0, 8, 0, -8, 0] }}
+          transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+        >
           <InFlightMark size={80} />
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 90" fill="none">
             <line x1="50" y1="6" x2="50" y2="64" stroke="currentColor" strokeWidth="0.8" strokeDasharray="3 2" className="text-border" />
             <line x1="22" y1="53" x2="78" y2="53" stroke="currentColor" strokeWidth="0.8" strokeDasharray="3 2" className="text-border" />
           </svg>
-        </div>
+        </motion.div>
         {desc && <p className="text-xs text-muted-foreground select-none text-center max-w-[180px]">{desc}</p>}
       </div>
     );
@@ -948,8 +994,16 @@ function LoaderSection({ section }: SectionProps) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-5">
         <div className="relative flex items-center justify-center w-[160px] h-[140px]">
-          <div className="absolute w-[130px] h-[130px] rounded-full border border-border/30" />
-          <div className="absolute w-[160px] h-[160px] rounded-full border border-border/15" />
+          <motion.div
+            className="absolute rounded-full border border-border"
+            animate={{ width: [100, 130, 100], height: [100, 130, 100], opacity: [0.4, 0.15, 0.4] }}
+            transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+          />
+          <motion.div
+            className="absolute rounded-full border border-border"
+            animate={{ width: [130, 160, 130], height: [130, 160, 130], opacity: [0.2, 0.08, 0.2] }}
+            transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut', delay: 0.4 }}
+          />
           <InFlightMark size={80} />
         </div>
         {desc && <p className="text-xs text-muted-foreground select-none text-center max-w-[180px] -mt-4">{desc}</p>}
@@ -961,12 +1015,22 @@ function LoaderSection({ section }: SectionProps) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-5">
       <div className="flex flex-col items-center">
-        <InFlightMark size={80} />
+        <motion.div
+          animate={{ x: [0, 3, 0] }}
+          transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
+        >
+          <InFlightMark size={80} />
+        </motion.div>
         <div className="flex gap-3 mt-2">
           {[0, 1, 2].map(col => (
             <div key={col} className="flex flex-col gap-1.5">
               {[0, 1, 2, 3].map(row => (
-                <div key={row} className="w-1.5 h-3 bg-foreground rounded-full" style={{ opacity: 0.35 - row * 0.07 }} />
+                <motion.div
+                  key={row}
+                  className="w-1.5 h-3 bg-foreground rounded-full"
+                  animate={{ opacity: [0.35 - row * 0.07, 0.05, 0.35 - row * 0.07] }}
+                  transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut', delay: col * 0.15 + row * 0.05 }}
+                />
               ))}
             </div>
           ))}

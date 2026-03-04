@@ -195,12 +195,21 @@ html, body, #root {
   background: transparent;
   border: none;
   border-radius: 50%;
-  cursor: default;
+  cursor: pointer;
   transition: background 0.1s;
 }
 
 .actions-toggle:hover {
   background: var(--tab-hover-bg);
+}
+
+.actions-toggle--active {
+  background: #18181b;
+  color: #fff;
+}
+
+.actions-toggle--active:hover {
+  background: #18181b;
 }
 
 .actions-toggle__dots {
@@ -234,6 +243,40 @@ html, body, #root {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.applying-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.applying-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2.5px solid rgba(0, 0, 0, 0.12);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: applying-spin 0.7s linear infinite;
+}
+
+@keyframes applying-spin {
+  to { transform: rotate(360deg); }
+}
+
+[data-theme='dark'] .applying-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] .applying-spinner {
+  border-color: rgba(255, 255, 255, 0.15);
+  border-top-color: #fff;
 }
 
 /* ── Actions menu (custom dropdown) ─────────────── */
