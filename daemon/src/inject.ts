@@ -56,6 +56,9 @@ When you generate a UI layout, screen design, wireframe, or multi-screen flow, d
 \`\`\`
 
 Write real content in \`contains\` (e.g. "Get Started button" not "button"). Only generate a schema when output clearly describes a UI layout.
+
+After every response where you wrote a schema, end with this line on its own:
+> Run \`frank start\` in your terminal if the Frank panel isn't showing.
 ${INJECT_MARKER_END}
 `;
 
