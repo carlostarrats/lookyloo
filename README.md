@@ -1,8 +1,8 @@
-# Looky Loo
+# Frank
 
-> "See what you're building."
+> A terminal companion for Claude Code that renders wireframes as you design.
 
-A terminal companion for Claude Code that automatically renders wireframes in a native macOS panel — no configuration, no prompting, no extra windows to manage.
+**Status: Beta.** Core functionality works. Rough edges exist. Not ready for general use.
 
 <!-- demo gif goes here -->
 
@@ -10,29 +10,48 @@ A terminal companion for Claude Code that automatically renders wireframes in a 
 
 ## What it does
 
-When you ask Claude Code to design a screen or flow, Looky Loo intercepts the output, generates a structured layout schema, and renders it as a low-fidelity wireframe in a floating panel alongside your terminal. Each screen becomes a tab. Multi-screen flows populate one by one, in sequence, with a skeleton that crossfades to the wireframe on completion.
+When you ask Claude Code to design a screen or flow, Frank intercepts the output, generates a structured layout schema, and renders it as a wireframe in a floating native panel alongside your terminal. Each screen becomes a tab. The panel stays out of your way until there's something to show.
 
-The panel is invisible until there's something to show. It hides on `Cmd+Shift+L`. It has no dock icon. It gets out of your way.
+---
+
+## What works
+
+- Single screens and multi-screen flows render automatically as you work with Claude Code
+- Section types with dedicated renderers: `header` `hero` `content` `top-nav` `bottom-nav` `sidebar` `form` `list` `grid` `chart` `stats-row` `footer` `empty-state` `banner` `toolbar` `modal` `loader` and more
+- `list` sections with column headers render as data tables (not mobile lists)
+- `stats-row` sections with value/badge format render as KPI cards
+- `chart` sections render line charts with time-period tabs and axis labels
+- Web platform (`"platform": "web"`) renders in full-width desktop layout — no device frame
+- Mobile/tablet platforms render inside a device frame
+- Tab bar for navigating multiple screens
+- `Cmd+Shift+L` to show/hide the panel
+- Actions menu per tab: copy schema, export as PNG, export as HTML, save as HTML, close tab
+
+## What's known to be incomplete
+
+- Colors appear in some renderers (status badges, chart lines) — should be black and white only
+- Build and deploy process is manual — `frank start` should be the only command ever needed
+- Renderer quality varies by section type — some sections look better than others
+- No Homebrew or npm package yet — build from source only
 
 ---
 
 ## Install
 
-> **Homebrew and npm packages are coming.** For now, build from source:
-
 ```bash
-git clone https://github.com/carlostarrats/lookyloo
-cd lookyloo
+git clone https://github.com/carlostarrats/frank
+cd frank
 
-# Build the daemon
-cd daemon && npm install && npm run build && cd ..
-
-# Install the daemon CLI globally
-npm install -g ./daemon
-
-# Build and run the panel
+# Install dependencies
 npm install
+
+# Build and install the panel app
 npm run tauri build
+cp -r src-tauri/target/release/bundle/macos/frank.app /Applications/frank.app
+
+# Build and install the daemon CLI
+cd daemon && npm install && npm run build && cd ..
+npm install -g ./daemon
 ```
 
 ---
@@ -40,35 +59,20 @@ npm run tauri build
 ## Usage
 
 ```bash
-# Start the daemon (runs in background, injects hooks + CLAUDE.md block)
-lookyloo start
-
-# Open Claude Code and work normally — wireframes appear automatically
-claude
-
-# Stop the daemon (removes hooks + CLAUDE.md block cleanly)
-lookyloo stop
+frank start   # starts daemon, launches panel, injects CLAUDE.md block
+frank stop    # stops daemon, removes CLAUDE.md block
 ```
 
-`lookyloo start` does two things:
-
-1. Registers a `PostToolUse` hook in `~/.claude/settings.json` so the tool fires after Claude writes a schema file
-2. Appends a delimited block to `~/.claude/CLAUDE.md` that instructs Claude Code to write layout schemas to `/tmp/lookyloo/`
-
-Both are idempotent and cleanly reversible with `lookyloo stop`.
-
-The panel launches automatically on `lookyloo start` and toggles with `Cmd+Shift+L` from anywhere on your desktop.
+`frank start` is the only command you should need. Open Claude Code, ask for a wireframe, it appears.
 
 ---
 
 ## How it works
 
 ```
-Claude Code (PostToolUse hook)
+Claude Code writes schema → /tmp/frank/render-<timestamp>.json
          ↓
-  daemon/hook.ts reads schema from tool output
-         ↓
-  Unix socket → daemon/server.ts
+  frank daemon watches /tmp/frank/ (FSEvents, ~10ms)
          ↓
   WebSocket → Tauri panel (ws://localhost:42069)
          ↓
@@ -81,7 +85,7 @@ No network traffic. No API calls. Everything stays on your machine.
 
 ## Schema
 
-Looky Loo renders from a typed JSON schema. Claude writes it; the panel consumes it; every export sends the same schema. What you see is exactly what you export.
+Frank renders from a typed JSON schema. Claude writes it; the panel consumes it.
 
 **Single screen:**
 
@@ -89,14 +93,30 @@ Looky Loo renders from a typed JSON schema. Claude writes it; the panel consumes
 {
   "schema": "v1",
   "type": "screen",
-  "label": "Home Screen",
-  "timestamp": "2025-03-03T14:34:00Z",
-  "platform": "mobile",
+  "label": "Dashboard",
+  "timestamp": "2026-03-05T00:00:00Z",
+  "platform": "web",
   "sections": [
-    { "type": "header", "contains": ["logo", "nav links", "user avatar"] },
-    { "type": "hero", "contains": ["headline", "subheadline", "CTA button"] },
-    { "type": "list", "contains": ["item", "item", "item"] },
-    { "type": "bottom-nav", "contains": ["home", "search", "profile"] }
+    {
+      "type": "header",
+      "contains": ["Brand logo wordmark", "Dashboard nav link", "Search input", "User avatar"]
+    },
+    {
+      "type": "stats-row",
+      "contains": [
+        "Total Revenue stat card — $84,320 value — +12.4% badge",
+        "Orders stat card — 1,284 value — +8.1% badge"
+      ]
+    },
+    {
+      "type": "list",
+      "label": "Recent Orders",
+      "contains": [
+        "Order # column header", "Customer column header", "Status column header",
+        "#ORD-001 — Sarah Johnson — Fulfilled badge",
+        "Previous button", "Page 1 of 12", "Next button"
+      ]
+    }
   ]
 }
 ```
@@ -107,41 +127,15 @@ Looky Loo renders from a typed JSON schema. Claude writes it; the panel consumes
 {
   "schema": "v1",
   "type": "flow",
-  "label": "Onboarding Flow",
-  "timestamp": "2025-03-03T14:34:00Z",
+  "label": "Onboarding",
+  "timestamp": "2026-03-05T00:00:00Z",
   "platform": "mobile",
-  "design_language": {
-    "nav_position": "bottom",
-    "header_style": "minimal",
-    "spacing": "comfortable"
-  },
   "screens": [
     { "label": "Welcome", "sections": [...] },
-    { "label": "Create Account", "sections": [...] },
-    { "label": "Set Preferences", "sections": [...] },
-    { "label": "All Done", "sections": [...] }
+    { "label": "Create Account", "sections": [...] }
   ]
 }
 ```
-
-**Supported section types:** `header` `hero` `content` `top-nav` `bottom-nav` `sidebar` `form` `list` `grid` `footer` `empty-state` `banner` `toolbar` `modal`
-
-**Supported platforms:** `mobile` `tablet` `web`
-
----
-
-## Exports
-
-Every export in the panel header reads from the same schema that drove the render.
-
-| Button | Output | When it appears |
-|--------|--------|-----------------|
-| **Copy** | Formatted JSON schema → clipboard | Always |
-| **Figma** | Claude + Figma MCP prompt → clipboard | If `figma` plugin is installed |
-| **GitHub** | GitHub-flavored markdown → clipboard | If `github` plugin is installed |
-| **PNG** | Wireframe image (2× retina) → download | Always |
-
-Plugin detection is automatic — Looky Loo reads `~/.claude/plugins/installed_plugins.json` at launch. No configuration needed.
 
 ---
 
@@ -149,32 +143,23 @@ Plugin detection is automatic — Looky Loo reads `~/.claude/plugins/installed_p
 
 - No data leaves your machine. Ever.
 - No telemetry, no analytics, no crash reporting.
-- Reads only local files Claude Code writes to `/tmp/lookyloo/`.
-- No account, no API key, no network calls (MCP exports are initiated explicitly by you).
-- The codebase is the privacy policy. Read it.
+- Reads only local files Claude Code writes to `/tmp/frank/`.
+- No account, no API key, no network calls.
 
 ---
 
 ## Development
 
 ```bash
-# Frontend dev server
-npm run dev
-
-# Tauri dev (hot reload)
-npm run tauri dev
-
-# Type-check
-npx tsc --noEmit
-
-# Daemon type-check
-cd daemon && npx tsc --noEmit
+npm run dev          # frontend dev server
+npm run tauri dev    # Tauri dev with hot reload (fastest for renderer changes)
+npx tsc --noEmit     # type-check
 ```
 
-**Architecture:** Tauri shell is intentionally minimal — no Rust logic beyond window management and the global shortcut. All application logic lives in React. See `CLAUDE.md` for locked architectural decisions.
+Renderer changes during development: use `npm run tauri dev` — hot reload means no rebuild needed. Only use `npm run tauri build` for distribution.
 
 ---
 
 ## License
 
-MIT — [carlostarrats/lookyloo](https://github.com/carlostarrats/lookyloo)
+MIT

@@ -315,7 +315,8 @@ function HeaderSection({ section }: SectionProps) {
   const avatarItem = avatarIdx >= 0 ? items[avatarIdx] : null;
 
   // Chat / profile header: back + avatar + name/status + action buttons
-  if (avatarItem) {
+  // Only use this layout when there's no logo — with a logo it's an app bar, not a chat header
+  if (avatarItem && !logoItem) {
     const afterAvatar = items.slice(avatarIdx + 1);
     const nameItem    = afterAvatar.find(isHeadline);
     const statusItem  = afterAvatar.find(isSubline);
@@ -344,23 +345,44 @@ function HeaderSection({ section }: SectionProps) {
     );
   }
 
-  // App bar: logo + nav links + optional right actions
+  // App bar: logo + nav links + search + right actions (icon buttons, avatar)
   if (logoItem) {
-    const navLinks  = items.filter(s => !isLogo(s) && !isBtn(s));
-    const rightBtns = items.filter(s => isBtn(s) && !isLeftBtn(s));
+    const isInputItem  = (s: string) => /\binput\b|\bsearch\b/i.test(s);
+    const isActionItem = (s: string) => /\b(button|btn|icon)\b/i.test(s) || /\bavatar\b/i.test(s);
+    const navLinks  = items.filter(s => !isLogo(s) && !isInputItem(s) && !isActionItem(s));
+    const inputItem = items.find(isInputItem);
+    const actionItems = items.filter(s => isActionItem(s) && !isLogo(s));
+    const cleanNavLabel = (s: string) => s.replace(/\s*(nav\s+)?(link|button|item)\s*$/i, '').trim() || s;
     return (
-      <div className="flex items-center w-full gap-3">
-        <span className="text-xs font-bold tracking-widest text-foreground bg-muted border border-border rounded px-2 py-1 flex-shrink-0 select-none">
-          {displayLabel(logoItem).toUpperCase()}
+      <div className="flex items-center w-full gap-2">
+        <span className="text-sm font-semibold text-foreground mr-1 flex-shrink-0 select-none">
+          {displayLabel(logoItem)}
         </span>
-        <nav className="flex items-center gap-4 flex-1 overflow-x-auto">
+        <nav className="flex items-center gap-3 flex-1 overflow-x-auto">
           {navLinks.map((item, i) => (
-            <span key={i} className="text-sm text-muted-foreground whitespace-nowrap select-none">{displayLabel(item)}</span>
+            <span key={i} className={`text-xs whitespace-nowrap select-none ${i === 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+              {cleanNavLabel(item)}
+            </span>
           ))}
         </nav>
-        {rightBtns.map((item, i) => (
-          <span key={i} className="text-foreground ml-1 flex-shrink-0"><HeaderIcon desc={item} /></span>
-        ))}
+        {inputItem && (
+          <div className="flex items-center gap-1 bg-muted border border-border rounded px-2 py-1 flex-shrink-0">
+            <Search size={11} className="text-muted-foreground" />
+            <span className="text-xs text-muted-foreground select-none w-12 truncate">{displayLabel(inputItem)}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          {actionItems.map((item, i) => {
+            if (/\bavatar\b/i.test(item)) {
+              return <div key={i} className="w-6 h-6 rounded-full bg-muted border border-border flex-shrink-0 ml-1" />;
+            }
+            return (
+              <Button key={i} variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
+                <HeaderIcon desc={item} />
+              </Button>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -623,6 +645,9 @@ function ChatSection({ section }: SectionProps) {
 }
 
 function ListSection({ section }: SectionProps) {
+  const hasTableHeaders = section.contains.some(s => /\bcolumn header\b/i.test(s));
+  if (hasTableHeaders) return <DataTableSection section={section} />;
+
   return (
     <div className="flex flex-col">
       {section.label && (
@@ -645,6 +670,93 @@ function ListSection({ section }: SectionProps) {
           {i < section.contains.length - 1 && <Separator />}
         </div>
       ))}
+    </div>
+  );
+}
+
+function DataTableSection({ section }: SectionProps) {
+  const isColHeader = (s: string) => /\bcolumn header\b/i.test(s);
+  const isPaginate  = (s: string) => /\b(previous|next)\s+button\b/i.test(s) || /\bpage\s+\d+\s+of\s+/i.test(s);
+
+  const headers    = section.contains.filter(isColHeader);
+  const pagination = section.contains.filter(isPaginate);
+  const rows       = section.contains.filter(s => !isColHeader(s) && !isPaginate(s));
+  const cols       = headers.map(h => h.replace(/\s*column header\s*/i, '').trim());
+
+  function renderCell(cell: string) {
+    const c = cell.trim();
+    const statusMatch = c.match(/^(fulfilled|processing|cancelled|pending|shipped|refunded)\s+badge$/i);
+    if (statusMatch) {
+      const status = statusMatch[1];
+      const colorClass =
+        /fulfilled|shipped/i.test(status) ? 'text-green-600' :
+        /cancelled|refunded/i.test(status) ? 'text-red-500' :
+        /processing|pending/i.test(status) ? 'text-yellow-600' : 'text-muted-foreground';
+      return (
+        <Badge variant="secondary" className={`text-xs font-medium ${colorClass} px-1.5 py-0`}>
+          {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
+        </Badge>
+      );
+    }
+    if (/\blink\b$/i.test(c)) {
+      const label = c.replace(/\s*link\s*$/i, '').trim() || 'View';
+      return <span className="text-xs text-blue-500 cursor-default select-none">{label}</span>;
+    }
+    return <span className="text-xs text-foreground select-none">{c}</span>;
+  }
+
+  return (
+    <div className="flex flex-col w-full">
+      {section.label && (
+        <div className="px-3 pt-3 pb-1">
+          <SectionLabel>{section.label}</SectionLabel>
+        </div>
+      )}
+      <div className="w-full overflow-x-auto">
+        <table className="w-full text-xs border-collapse">
+          {cols.length > 0 && (
+            <thead>
+              <tr className="border-b border-border">
+                {cols.map((col, i) => (
+                  <th key={i} className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap select-none">
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {rows.map((row, ri) => {
+              const cells = row.split(/\s*—\s*/).map(s => s.trim());
+              return (
+                <tr key={ri} className="border-b border-border/40">
+                  {cells.map((cell, ci) => (
+                    <td key={ci} className="px-3 py-2 whitespace-nowrap">
+                      {renderCell(cell)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {pagination.length > 0 && (
+        <div className="flex items-center justify-between px-3 py-2 border-t border-border">
+          {pagination.map((item, i) => {
+            const isPageLabel = /\bpage\b/i.test(item) && !/\bbutton\b/i.test(item);
+            if (isPageLabel) {
+              return <span key={i} className="text-xs text-muted-foreground select-none">{item}</span>;
+            }
+            const label = item.replace(/\s*button\s*$/i, '').trim();
+            return (
+              <Button key={i} variant="outline" size="sm" className="h-6 text-xs px-2">
+                {label}
+              </Button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -768,13 +880,47 @@ function ActionRowSection({ section }: SectionProps) {
   );
 }
 
+function parseStatCard(raw: string) {
+  if (raw.includes(' — ')) {
+    const parts = raw.split(' — ').map(s => s.trim());
+    const label = parts[0]?.replace(/\s*stat\s*card\s*/i, '').trim() ?? '';
+    const value = parts.find(p => /\bvalue\b$/i.test(p))?.replace(/\s*value\s*$/i, '').trim() ?? '';
+    const badge = parts.find(p => /\bbadge\b$/i.test(p))?.replace(/\s*badge\s*$/i, '').trim() ?? '';
+    return { label, value, badge };
+  }
+  const words = raw.split(/\s+/);
+  return { label: words.slice(1).join(' '), value: words[0] ?? '', badge: '' };
+}
+
 function StatsRowSection({ section }: SectionProps) {
+  const isRich = section.contains.some(s => s.includes(' — '));
+
+  if (isRich) {
+    return (
+      <div className="grid grid-cols-2 gap-2 p-3">
+        {section.contains.map((item, i) => {
+          const { label, value, badge } = parseStatCard(item);
+          const trend = badge.startsWith('+') ? 'up' : badge.startsWith('-') ? 'down' : null;
+          return (
+            <div key={i} className="flex flex-col gap-1 p-3 rounded-lg border border-border bg-background">
+              <div className="text-xs text-muted-foreground select-none leading-tight">{label}</div>
+              <div className="text-lg font-bold text-foreground select-none">{value}</div>
+              {badge && (
+                <span className={`text-xs font-medium select-none ${
+                  trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-muted-foreground'
+                }`}>{badge}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-row border-y border-border">
       {section.contains.map((item, i) => {
-        const parts = item.split(/\s+/);
-        const value = parts[0] ?? '';
-        const label = parts.slice(1).join(' ');
+        const { value, label } = parseStatCard(item);
         return (
           <div key={i} className={`flex-1 flex flex-col items-center py-4 px-4 gap-1 ${
             i < section.contains.length - 1 ? 'border-r border-border' : ''
@@ -897,20 +1043,121 @@ function FeatureSection({ section }: SectionProps) {
   );
 }
 
-function ChartSection({ section: _ }: SectionProps) {
+function ChartSection({ section }: SectionProps) {
+  const contains = section.contains;
+
+  // Time-period selector tabs
+  const tabItems = contains.filter(s => /\bselector\s+tab\b/i.test(s));
+
+  // Line chart detection
+  const isLine = contains.some(s => /\bline\s*(chart|graph)\b/i.test(s));
+
+  // Axis labels: "Jan, Feb, Mar axis labels"
+  const axisRaw = contains.find(s => /\baxis\s+labels?\b/i.test(s));
+  let axisLabels: string[] | null = null;
+  if (axisRaw) {
+    const match = axisRaw.match(/^(.*?)\s*—?\s*axis\s+labels?\s*$/i);
+    const raw = match?.[1] ?? axisRaw;
+    const afterDash = raw.includes('—') ? raw.split('—').pop()!.trim() : raw.trim();
+    axisLabels = afterDash.split(/[,]\s*/).map(s => s.trim()).filter(Boolean);
+  }
+
+  // Named series: "Revenue line — blue"
+  const lineItems = contains.filter(s => /\bline\s*—\s*(blue|violet|green|red|orange|purple)/i.test(s));
+
   return (
-    <div className="flex flex-col gap-2 w-full">
-      <div className="w-full h-40 bg-muted border border-border rounded-lg relative overflow-hidden">
-        {/* Y-axis lines */}
-        {[0.25, 0.5, 0.75].map(p => (
-          <div key={p} className="absolute w-full border-t border-border/60" style={{ top: `${p * 100}%` }} />
-        ))}
-        {/* Bars */}
-        <div className="absolute inset-x-4 bottom-0 flex items-end justify-between gap-2 h-full pb-0">
-          {[65, 45, 80, 55, 70, 40, 75].map((h, i) => (
-            <div key={i} className="flex-1 bg-foreground/15 border border-border rounded-t-sm" style={{ height: `${h}%` }} />
-          ))}
+    <div className="flex flex-col gap-2 w-full px-1">
+      {section.label && <SectionLabel>{section.label}</SectionLabel>}
+      {tabItems.length > 0 && (
+        <div className="flex gap-1 justify-end">
+          {tabItems.map((tab, i) => {
+            const label = tab.replace(/\s*selector\s+tab\s*/i, '').replace(/\s*\bactive\b\s*/i, '').trim();
+            const isActive = /\bactive\b/i.test(tab);
+            return (
+              <span key={i} className={`text-xs px-2 py-0.5 rounded select-none ${
+                isActive ? 'bg-foreground text-background font-medium' : 'text-muted-foreground border border-border'
+              }`}>
+                {label}
+              </span>
+            );
+          })}
         </div>
+      )}
+      {isLine
+        ? <LineChartViz axisLabels={axisLabels} lineItems={lineItems} />
+        : <BarChartViz />
+      }
+    </div>
+  );
+}
+
+function LineChartViz({ axisLabels, lineItems }: { axisLabels: string[] | null; lineItems: string[] }) {
+  const W = 300, H = 110, px = 8, py = 14;
+  const blueData   = [38, 52, 45, 63, 58, 74];
+  const violetData = [28, 34, 41, 36, 45, 50];
+  const n = blueData.length;
+
+  const toX = (i: number) => px + (i / (n - 1)) * (W - px * 2);
+  const toY = (v: number) => py + (1 - (v - 20) / 60) * (H - py * 2);
+  const path = (d: number[]) => d.map((v, i) => `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+  const area = (d: number[]) =>
+    `${path(d)} L${toX(n - 1).toFixed(1)},${(H - py).toFixed(1)} L${toX(0).toFixed(1)},${(H - py).toFixed(1)} Z`;
+
+  // Map series names to colors
+  const seriesColors = lineItems.map(item =>
+    /blue/i.test(item) ? '#3b82f6' : /violet/i.test(item) ? '#8b5cf6' : '#10b981'
+  );
+  const allData = [blueData, violetData];
+
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: '120px' }}>
+        {[0.25, 0.5, 0.75].map((p, i) => (
+          <line key={i} x1={px} y1={py + p * (H - py * 2)} x2={W - px} y2={py + p * (H - py * 2)}
+            stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 2" className="text-border" />
+        ))}
+        {allData.map((d, si) => (
+          <path key={`a${si}`} d={area(d)} fill={seriesColors[si] ?? '#888'} fillOpacity="0.07" />
+        ))}
+        {allData.map((d, si) => (
+          <path key={`l${si}`} d={path(d)} fill="none" stroke={seriesColors[si] ?? '#888'}
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+        {(axisLabels ?? []).slice(0, n).map((label, i) => (
+          <text key={i} x={toX(i)} y={H - 2} textAnchor="middle" fontSize="7"
+            fill="currentColor" className="text-muted-foreground select-none">
+            {label}
+          </text>
+        ))}
+      </svg>
+      {lineItems.length > 0 && (
+        <div className="flex gap-4 px-2 mt-1">
+          {lineItems.map((item, i) => {
+            const name = item.split(/\s*—\s*/)[0]?.replace(/\s*line\s*/i, '').trim() ?? item;
+            const color = seriesColors[i] ?? '#888';
+            return (
+              <div key={i} className="flex items-center gap-1.5">
+                <div className="w-4 rounded-sm" style={{ height: '2px', background: color }} />
+                <span className="text-xs text-muted-foreground select-none">{name}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BarChartViz() {
+  return (
+    <div className="w-full h-40 bg-muted border border-border rounded-lg relative overflow-hidden">
+      {[0.25, 0.5, 0.75].map(p => (
+        <div key={p} className="absolute w-full border-t border-border/60" style={{ top: `${p * 100}%` }} />
+      ))}
+      <div className="absolute inset-x-4 bottom-0 flex items-end justify-between gap-2 h-full pb-0">
+        {[65, 45, 80, 55, 70, 40, 75].map((h, i) => (
+          <div key={i} className="flex-1 bg-foreground/15 border border-border rounded-t-sm" style={{ height: `${h}%` }} />
+        ))}
       </div>
     </div>
   );

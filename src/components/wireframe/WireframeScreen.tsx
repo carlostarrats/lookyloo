@@ -38,9 +38,8 @@ export function WireframeScreen({ schema, onNavigate, editMode, onSectionClick }
   const shouldAnimate = !hasAnimated.current;
   if (shouldAnimate) hasAnimated.current = true;
 
-  // The first non-chrome section fills remaining device height when chrome sections exist.
-  // This models how real mobile screens work: header + scrollable content + toolbar.
-  const hasChrome = schema.sections.some(s => CHROME.has(s.type));
+  // Fill logic only applies to mobile/tablet — on web, sections stack naturally.
+  const hasChrome = schema.platform !== 'web' && schema.sections.some(s => CHROME.has(s.type));
   const fillIdx   = hasChrome ? schema.sections.findIndex(s => !CHROME.has(s.type)) : -1;
 
   return (
