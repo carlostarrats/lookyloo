@@ -139,7 +139,7 @@
 /* ── toolbar ─────────────────────────────────────────────────────────────── */
 
 .wf-section--toolbar {
-  padding: 10px 16px;
+  padding: 12px 16px;
   background: var(--wf-bg);
   border-top: 1px solid var(--wf-border);
   display: flex;

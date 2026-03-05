@@ -115,7 +115,7 @@ function renderSection(section: Section, screenLabel?: string, platform?: string
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2 select-none">
+    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2 select-none">
       {children}
     </div>
   );
@@ -172,11 +172,11 @@ function SmartItem({ label }: { label: string }) {
       return <p className="text-2xl font-bold text-foreground leading-tight select-none">{text}</p>;
 
     case 'subheadline':
-      return <p className="text-[15px] text-muted-foreground leading-snug select-none">{text}</p>;
+      return <p className="text-base text-muted-foreground leading-snug select-none">{text}</p>;
 
     case 'body-text':
       return (
-        <div className="flex flex-col gap-1.5 w-full">
+        <div className="flex flex-col gap-1 w-full">
           <div className="h-2 bg-border rounded-sm w-full" />
           <div className="h-2 bg-border rounded-sm" style={{ width: '91%' }} />
           <div className="h-2 bg-border rounded-sm" style={{ width: '76%' }} />
@@ -234,7 +234,7 @@ function SmartItem({ label }: { label: string }) {
       );
 
     case 'icon':
-      return <span className="text-muted-foreground flex-shrink-0"><HeaderIcon desc={label} /></span>;
+      return <Button variant="ghost" size="icon"><HeaderIcon desc={label} /></Button>;
 
     case 'input':
       return (
@@ -325,19 +325,19 @@ function HeaderSection({ section }: SectionProps) {
       <div className="flex items-center w-full gap-2">
         <div className="flex items-center w-8 flex-shrink-0">
           {leftBtns.map((item, i) => (
-            <span key={i} className="text-foreground"><HeaderIcon desc={item} /></span>
+            <Button key={i} variant="ghost" size="icon" className="flex-shrink-0"><HeaderIcon desc={item} /></Button>
           ))}
         </div>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="w-8 h-8 rounded-full bg-muted border border-border flex-shrink-0" />
           <div className="flex flex-col min-w-0">
             {nameItem && <span className="text-sm font-semibold text-foreground leading-tight truncate select-none">{displayLabel(nameItem)}</span>}
-            {statusItem && <span className="text-[11px] text-muted-foreground leading-tight truncate select-none">{displayLabel(statusItem)}</span>}
+            {statusItem && <span className="text-xs text-muted-foreground leading-tight truncate select-none">{displayLabel(statusItem)}</span>}
           </div>
         </div>
-        <div className="flex items-center gap-0.5 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {rightBtns.map((item, i) => (
-            <span key={i} className="text-foreground"><HeaderIcon desc={item} /></span>
+            <Button key={i} variant="ghost" size="icon" className="flex-shrink-0"><HeaderIcon desc={item} /></Button>
           ))}
         </div>
       </div>
@@ -371,9 +371,9 @@ function HeaderSection({ section }: SectionProps) {
 
   return (
     <div className="flex items-center w-full">
-      <div className="w-10 flex items-center gap-0.5 flex-shrink-0">
+      <div className="w-10 flex items-center gap-1 flex-shrink-0">
         {leftBtns.map((item, i) => (
-          <span key={i} className="text-foreground"><HeaderIcon desc={item} /></span>
+          <Button key={i} variant="ghost" size="icon" className="flex-shrink-0"><HeaderIcon desc={item} /></Button>
         ))}
       </div>
       <div className="flex-1 flex justify-center items-center min-w-0 px-2">
@@ -381,9 +381,9 @@ function HeaderSection({ section }: SectionProps) {
           <span key={i} className="text-sm font-semibold text-foreground truncate select-none">{displayLabel(item)}</span>
         ))}
       </div>
-      <div className="w-10 flex items-center justify-end gap-0.5 flex-shrink-0">
+      <div className="w-10 flex items-center justify-end gap-1 flex-shrink-0">
         {rightBtns.map((item, i) => (
-          <span key={i} className="text-foreground"><HeaderIcon desc={item} /></span>
+          <Button key={i} variant="ghost" size="icon" className="flex-shrink-0"><HeaderIcon desc={item} /></Button>
         ))}
       </div>
     </div>
@@ -409,7 +409,7 @@ function HeroSection({ section, platform }: SectionProps) {
     );
   }
   return (
-    <div className="flex flex-col items-center gap-3.5 text-center py-9 px-6">
+    <div className="flex flex-col items-center gap-3 text-center py-8 px-6">
       {section.label && <SectionLabel>{section.label}</SectionLabel>}
       {section.contains.map((item, i) => {
         if (classify(item) === 'headline') {
@@ -441,7 +441,7 @@ function TopNavSection({ section }: SectionProps) {
   const navItems = section.contains.filter(s => !isLogo(s) && !isCta(s) && !isAuth(s));
 
   return (
-    <div className="flex items-center h-[52px] border-b border-border px-5">
+    <div className="flex items-center h-[52px] border-b border-border px-4">
       {logoItem && (
         <span className="text-sm font-bold text-foreground mr-6 flex-shrink-0 select-none">
           {displayLabel(logoItem)}
@@ -449,14 +449,14 @@ function TopNavSection({ section }: SectionProps) {
       )}
       <nav className="flex items-center gap-1 flex-1">
         {navItems.map((item, i) => (
-          <span key={i} className="px-2.5 py-1.5 text-sm text-muted-foreground rounded select-none">
+          <span key={i} className="px-3 py-1 text-sm text-muted-foreground rounded select-none">
             {item}
           </span>
         ))}
       </nav>
       <div className="flex items-center gap-2 flex-shrink-0">
         {authItem && (
-          <span className="text-sm text-muted-foreground px-2.5 py-1.5 select-none">{authItem}</span>
+          <span className="text-sm text-muted-foreground px-3 py-1 select-none">{authItem}</span>
         )}
         {ctaItem && <Button size="sm">{displayLabel(ctaItem)}</Button>}
       </div>
@@ -513,7 +513,7 @@ function BottomNavSection({ section, screenLabel }: SectionProps) {
         return (
           <div key={i} className={`flex flex-col items-center gap-1 ${active ? 'text-foreground' : 'text-muted-foreground'}`}>
             {navIcon(item)}
-            <span className="text-[0.6875rem] font-medium select-none">{item}</span>
+            <span className="text-xs font-medium select-none">{item}</span>
           </div>
         );
       })}
@@ -523,7 +523,7 @@ function BottomNavSection({ section, screenLabel }: SectionProps) {
 
 function SidebarSection({ section, screenLabel }: SectionProps) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1">
       {section.label && <SectionLabel>{section.label}</SectionLabel>}
       {section.contains.map((item, i) => {
         const active = screenLabel
@@ -531,7 +531,7 @@ function SidebarSection({ section, screenLabel }: SectionProps) {
             screenLabel.toLowerCase().includes(item.toLowerCase())
           : i === 0;
         return (
-          <div key={i} className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm font-medium select-none ${
+          <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium select-none ${
             active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
           }`}>
             <span className="flex-shrink-0">{navIcon(item)}</span>
@@ -545,7 +545,7 @@ function SidebarSection({ section, screenLabel }: SectionProps) {
 
 function FormSection({ section }: SectionProps) {
   return (
-    <div className="flex flex-col items-start gap-3">
+    <div className="flex flex-col items-start gap-4">
       {section.label && <SectionLabel>{section.label}</SectionLabel>}
       {section.contains.map((item, i) => <SmartItem key={i} label={item} />)}
     </div>
@@ -567,12 +567,12 @@ function ChatSection({ section }: SectionProps) {
     .trim();
 
   return (
-    <div className="flex flex-col gap-1 px-4 pt-4 pb-2">
+    <div className="flex flex-col gap-2 px-4 pt-4 pb-3">
       {section.contains.map((item, i) => {
         if (isTimestamp(item)) {
           return (
             <div key={i} className="flex justify-center py-3">
-              <span className="text-[11px] text-muted-foreground bg-muted px-3 py-1 rounded-full select-none">
+              <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full select-none">
                 {msgText(item) || item}
               </span>
             </div>
@@ -582,7 +582,7 @@ function ChatSection({ section }: SectionProps) {
           return (
             <div key={i} className="flex items-end gap-2 mt-1">
               <div className="w-8 h-8 rounded-full bg-muted border border-border flex-shrink-0" />
-              <div className="bg-muted border border-border rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-1.5">
+              <div className="bg-muted border border-border rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50 flex-shrink-0" />
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50 flex-shrink-0" />
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50 flex-shrink-0" />
@@ -599,21 +599,21 @@ function ChatSection({ section }: SectionProps) {
 
         if (sent) {
           return (
-            <div key={i} className={`flex justify-end pl-14 ${grouped ? 'mt-0.5' : 'mt-2'}`}>
-              <div className="bg-foreground text-background rounded-2xl rounded-br-none px-4 py-2.5 max-w-[80%]">
-                <p className="text-[15px] leading-relaxed select-none">{text}</p>
+            <div key={i} className={`flex justify-end pl-14 ${grouped ? 'mt-1' : 'mt-3'}`}>
+              <div className="bg-foreground text-background rounded-2xl rounded-br-none px-4 py-3 max-w-[80%]">
+                <p className="text-base leading-relaxed select-none">{text}</p>
               </div>
             </div>
           );
         }
         return (
-          <div key={i} className={`flex items-end gap-2.5 pr-14 ${grouped ? 'mt-0.5' : 'mt-2'}`}>
+          <div key={i} className={`flex items-end gap-2 pr-14 ${grouped ? 'mt-1' : 'mt-3'}`}>
             {grouped
               ? <div className="w-8 flex-shrink-0" />
               : <div className="w-8 h-8 rounded-full bg-muted border border-border flex-shrink-0" />
             }
-            <div className="bg-muted border border-border rounded-2xl rounded-bl-none px-4 py-2.5 max-w-[80%]">
-              <p className="text-[15px] leading-relaxed select-none">{text}</p>
+            <div className="bg-muted border border-border rounded-2xl rounded-bl-none px-4 py-3 max-w-[80%]">
+              <p className="text-base leading-relaxed select-none">{text}</p>
             </div>
           </div>
         );
@@ -626,18 +626,18 @@ function ListSection({ section }: SectionProps) {
   return (
     <div className="flex flex-col">
       {section.label && (
-        <div className="px-4 pt-3 pb-1.5">
+        <div className="px-4 pt-3 pb-1">
           <SectionLabel>{section.label}</SectionLabel>
         </div>
       )}
       {section.contains.map((item, i) => (
         <div key={i}>
-          <div className="flex items-center gap-3 px-4 py-3.5">
+          <div className="flex items-center gap-3 px-4 py-3">
             <Avatar className="w-10 h-10 flex-shrink-0">
               <AvatarFallback className="text-sm">{displayLabel(item).slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="flex-1 flex flex-col gap-1.5 min-w-0">
-              <div className="text-[15px] font-medium text-foreground select-none leading-tight">{displayLabel(item)}</div>
+            <div className="flex-1 flex flex-col gap-1 min-w-0">
+              <div className="text-base font-medium text-foreground select-none leading-tight">{displayLabel(item)}</div>
               <div className="h-2 w-2/3 bg-border/60 rounded" />
             </div>
             <ChevronRight size={18} className="text-border flex-shrink-0" />
@@ -653,7 +653,7 @@ function GridSection({ section }: SectionProps) {
   return (
     <div className="flex flex-col gap-3">
       {section.label && <SectionLabel>{section.label}</SectionLabel>}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2">
         {section.contains.map((item, i) => (
           <Card key={i} className="overflow-hidden p-0 gap-0">
             <div className="wf-image-placeholder w-full h-[120px]" />
@@ -677,7 +677,7 @@ function FooterSection({ section }: SectionProps) {
   const copyright   = section.contains.find(isCopyright);
   const links       = section.contains.filter(s => !isLogo(s) && !isCopyright(s));
   return (
-    <div className="flex flex-col gap-2.5 px-5 py-4">
+    <div className="flex flex-col gap-3 px-4 py-4">
       <div className="flex items-center gap-4 flex-wrap">
         {logo && (
           <span className="text-xs font-bold tracking-widest text-foreground bg-muted border border-border rounded px-2 py-0.5 flex-shrink-0 select-none">
@@ -723,11 +723,9 @@ function ToolbarSection({ section }: SectionProps) {
     <>
       {section.contains.map((item, i) =>
         isInput(item) ? (
-          <div key={i} className="flex-1 h-8 rounded-full bg-muted border border-border flex items-center px-3">
-            <span className="text-xs text-muted-foreground/60 select-none truncate">{displayLabel(item)}</span>
-          </div>
+          <Input key={i} className="flex-1" placeholder={displayLabel(item)} readOnly />
         ) : (
-          <Button key={i} variant="ghost" size="icon" className="w-8 h-8 flex-shrink-0" title={item}>
+          <Button key={i} variant="ghost" size="icon" className="flex-shrink-0" title={item}>
             <HeaderIcon desc={item} />
           </Button>
         )
@@ -740,18 +738,18 @@ function SectionGroupSection({ section }: SectionProps) {
   return (
     <div>
       {section.label && (
-        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-3.5 pb-1.5 px-1 select-none">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-3 pb-2 px-1 select-none">
           {section.label}
         </div>
       )}
       <div className="bg-background border border-border rounded-xl overflow-hidden">
         {section.contains.map((item, i) => (
           <div key={i}>
-            <div className="flex items-center px-3.5 py-[11px]">
+            <div className="flex items-center px-4 py-3">
               <SmartItem label={item} />
             </div>
             {i < section.contains.length - 1 && (
-              <div className="h-px bg-border ml-3.5" />
+              <div className="h-px bg-border ml-4" />
             )}
           </div>
         ))}
@@ -762,7 +760,7 @@ function SectionGroupSection({ section }: SectionProps) {
 
 function ActionRowSection({ section }: SectionProps) {
   return (
-    <div className="flex flex-col items-start gap-2.5">
+    <div className="flex flex-col items-start gap-2">
       {section.contains.map((item, i) => (
         <SmartItem key={i} label={item} />
       ))}
@@ -825,7 +823,7 @@ function GenericSection({ section }: SectionProps) {
             const [name, detail] = item.split('—').map(s => s.trim());
             return (
               <div key={i}>
-                <div className="flex items-center gap-3 py-2.5">
+                <div className="flex items-center gap-3 py-3">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-foreground select-none">{name}</div>
                     {detail && <div className="text-xs text-muted-foreground select-none">{detail}</div>}
@@ -842,7 +840,7 @@ function GenericSection({ section }: SectionProps) {
       {isNav && !isChips && !isDetailList && (
         <div className="flex flex-wrap items-center gap-1">
           {items.map((item, i) => (
-            <span key={i} className="px-3 py-1.5 text-sm text-muted-foreground rounded select-none">{item}</span>
+            <span key={i} className="px-3 py-2 text-sm text-muted-foreground rounded select-none">{item}</span>
           ))}
         </div>
       )}
@@ -862,7 +860,7 @@ function TabsSection({ section }: SectionProps) {
   return (
     <div className="flex border-b border-border">
       {section.contains.map((item, i) => (
-        <div key={i} className={`px-4 py-2.5 text-sm font-medium select-none whitespace-nowrap cursor-default ${
+        <div key={i} className={`px-4 py-3 text-sm font-medium select-none whitespace-nowrap cursor-default ${
           i === 0
             ? 'text-foreground border-b-2 border-foreground -mb-px'
             : 'text-muted-foreground'
@@ -887,7 +885,7 @@ function FeatureSection({ section }: SectionProps) {
               <div className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center flex-shrink-0">
                 <span className="text-muted-foreground"><HeaderIcon desc={title} /></span>
               </div>
-              <div className="flex flex-col gap-0.5 min-w-0">
+              <div className="flex flex-col gap-1 min-w-0">
                 <span className="text-sm font-medium text-foreground select-none">{title}</span>
                 {desc && <span className="text-xs text-muted-foreground select-none">{desc}</span>}
               </div>
@@ -977,7 +975,7 @@ function TestimonialSection({ section }: SectionProps) {
         const [quote, author] = item.split('—').map(s => s.trim());
         return (
           <div key={i} className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-background">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <div className="h-2 bg-border rounded-sm w-full" />
               <div className="h-2 bg-border rounded-sm" style={{ width: '85%' }} />
               <div className="h-2 bg-border rounded-sm" style={{ width: '70%' }} />
@@ -985,7 +983,7 @@ function TestimonialSection({ section }: SectionProps) {
             {quote && <p className="text-sm text-muted-foreground italic select-none">"{quote}"</p>}
             {author && (
               <div className="flex items-center gap-2">
-                <Avatar className="w-6 h-6"><AvatarFallback className="text-[10px]">{author.slice(0,2).toUpperCase()}</AvatarFallback></Avatar>
+                <Avatar className="w-8 h-8"><AvatarFallback className="text-xs">{author.slice(0,2).toUpperCase()}</AvatarFallback></Avatar>
                 <span className="text-xs font-medium text-foreground select-none">{author}</span>
               </div>
             )}
@@ -1237,7 +1235,7 @@ function PlaceListSection({ section }: SectionProps) {
   return (
     <div className="flex flex-col">
       {section.label && (
-        <div className="px-4 pt-2.5 pb-1">
+        <div className="px-4 pt-3 pb-1">
           <SectionLabel>{section.label}</SectionLabel>
         </div>
       )}
@@ -1246,8 +1244,8 @@ function PlaceListSection({ section }: SectionProps) {
         return (
           <div key={i}>
             <div className="flex items-center gap-3 px-4 py-3">
-              <div className="w-9 h-9 rounded-xl bg-muted border border-border flex items-center justify-center flex-shrink-0">
-                <MapPin size={15} className="text-muted-foreground" />
+              <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center flex-shrink-0">
+                <MapPin size={16} className="text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-foreground select-none">{name}</div>
@@ -1270,15 +1268,15 @@ function ModalSection({ section }: SectionProps) {
   return (
     <div className="w-full flex items-center justify-center">
       <div className="bg-background border border-border rounded-xl w-[85%] max-w-[280px] shadow-lg overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-sm font-semibold text-foreground select-none">{section.label ?? 'Dialog'}</span>
           <span className="text-xs text-muted-foreground select-none">✕</span>
         </div>
-        <div className="px-4 py-3.5 flex flex-col gap-2.5">
+        <div className="px-4 py-3 flex flex-col gap-2">
           {bodyItems.map((item, i) => <SmartItem key={i} label={item} />)}
         </div>
         {actionItems.length > 0 && (
-          <div className="px-4 pb-3.5 pt-2.5 flex gap-2 justify-end border-t border-border">
+          <div className="px-4 pb-3 pt-3 flex gap-2 justify-end border-t border-border">
             {actionItems.map((item, i) => <SmartItem key={i} label={item} />)}
           </div>
         )}
