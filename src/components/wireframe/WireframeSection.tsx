@@ -172,7 +172,7 @@ function SmartItem({ label }: { label: string }) {
       return <p className="text-2xl font-bold text-foreground leading-tight select-none">{text}</p>;
 
     case 'subheadline':
-      return <p className="text-sm text-muted-foreground leading-snug select-none">{text}</p>;
+      return <p className="text-[15px] text-muted-foreground leading-snug select-none">{text}</p>;
 
     case 'body-text':
       return (
@@ -558,51 +558,62 @@ function isChatList(section: Section): boolean {
 }
 
 function ChatSection({ section }: SectionProps) {
-  const isSent       = (s: string) => /\bsent\b/i.test(s);
-  const isTimestamp  = (s: string) => /\btimestamp\b/i.test(s) || /^\d{1,2}:\d{2}/.test(s.trim());
-  const isTyping     = (s: string) => /\btyping\b/i.test(s);
-  const messageText  = (s: string) => s.replace(/\s*text bubble\s*(sent|received)?\s*/i, '').replace(/\s*bubble\s*(sent|received)?\s*/i, '').trim();
+  const isSent      = (s: string) => /\bsent\b/i.test(s);
+  const isTimestamp = (s: string) => /\btimestamp\b/i.test(s) || /^\d{1,2}:\d{2}/.test(s.trim());
+  const isTyping    = (s: string) => /\btyping\b/i.test(s);
+  const msgText     = (s: string) => s
+    .replace(/\s*text bubble\s*(sent|received)?\s*/i, '')
+    .replace(/\s*bubble\s*(sent|received)?\s*/i, '')
+    .trim();
 
   return (
-    <div className="flex flex-col gap-2 px-3 py-2">
+    <div className="flex flex-col gap-1 px-4 pt-4 pb-2">
       {section.contains.map((item, i) => {
         if (isTimestamp(item)) {
           return (
-            <div key={i} className="flex justify-center py-1">
-              <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full select-none">
-                {messageText(item) || item}
+            <div key={i} className="flex justify-center py-3">
+              <span className="text-[11px] text-muted-foreground bg-muted px-3 py-1 rounded-full select-none">
+                {msgText(item) || item}
               </span>
             </div>
           );
         }
         if (isTyping(item)) {
           return (
-            <div key={i} className="flex items-end gap-2">
-              <div className="w-6 h-6 rounded-full bg-muted border border-border flex-shrink-0" />
-              <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-3 py-2 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+            <div key={i} className="flex items-end gap-2 mt-1">
+              <div className="w-8 h-8 rounded-full bg-muted border border-border flex-shrink-0" />
+              <div className="bg-muted border border-border rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 flex-shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 flex-shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 flex-shrink-0" />
               </div>
             </div>
           );
         }
+
         const sent = isSent(item);
-        const text = messageText(item);
+        const text = msgText(item);
+        // Check if previous/next message is same direction — group with tighter spacing
+        const prevSent = i > 0 ? isSent(section.contains[i - 1]) : null;
+        const grouped  = prevSent === sent;
+
         if (sent) {
           return (
-            <div key={i} className="flex justify-end">
-              <div className="bg-foreground text-background rounded-2xl rounded-br-sm px-3 py-2 max-w-[72%]">
-                <p className="text-[13px] leading-snug select-none">{text}</p>
+            <div key={i} className={`flex justify-end pl-14 ${grouped ? 'mt-0.5' : 'mt-2'}`}>
+              <div className="bg-foreground text-background rounded-2xl rounded-br-none px-4 py-2.5 max-w-[80%]">
+                <p className="text-[15px] leading-relaxed select-none">{text}</p>
               </div>
             </div>
           );
         }
         return (
-          <div key={i} className="flex items-end gap-2">
-            <div className="w-6 h-6 rounded-full bg-muted border border-border flex-shrink-0" />
-            <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-3 py-2 max-w-[72%]">
-              <p className="text-[13px] leading-snug select-none">{text}</p>
+          <div key={i} className={`flex items-end gap-2.5 pr-14 ${grouped ? 'mt-0.5' : 'mt-2'}`}>
+            {grouped
+              ? <div className="w-8 flex-shrink-0" />
+              : <div className="w-8 h-8 rounded-full bg-muted border border-border flex-shrink-0" />
+            }
+            <div className="bg-muted border border-border rounded-2xl rounded-bl-none px-4 py-2.5 max-w-[80%]">
+              <p className="text-[15px] leading-relaxed select-none">{text}</p>
             </div>
           </div>
         );
@@ -615,21 +626,21 @@ function ListSection({ section }: SectionProps) {
   return (
     <div className="flex flex-col">
       {section.label && (
-        <div className="px-4 pt-2.5 pb-1">
+        <div className="px-4 pt-3 pb-1.5">
           <SectionLabel>{section.label}</SectionLabel>
         </div>
       )}
       {section.contains.map((item, i) => (
         <div key={i}>
-          <div className="flex items-center gap-3 px-4 py-2.5">
-            <Avatar className="w-8 h-8 flex-shrink-0">
-              <AvatarFallback className="text-xs">{item.slice(0, 1).toUpperCase()}</AvatarFallback>
+          <div className="flex items-center gap-3 px-4 py-3.5">
+            <Avatar className="w-10 h-10 flex-shrink-0">
+              <AvatarFallback className="text-sm">{displayLabel(item).slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="flex-1 flex flex-col gap-1 min-w-0">
-              <div className="text-sm font-medium text-foreground select-none">{item}</div>
-              <div className="h-1.5 w-3/5 bg-border rounded-sm" />
+            <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+              <div className="text-[15px] font-medium text-foreground select-none leading-tight">{displayLabel(item)}</div>
+              <div className="h-2 w-2/3 bg-border/60 rounded" />
             </div>
-            <ChevronRight size={16} className="text-border flex-shrink-0" />
+            <ChevronRight size={18} className="text-border flex-shrink-0" />
           </div>
           {i < section.contains.length - 1 && <Separator />}
         </div>
